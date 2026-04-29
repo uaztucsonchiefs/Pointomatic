@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 const ADMIN_EMAIL = "nathantwalton@gmail.com";
 const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX3e1Hf4ExWgkwJK6gjevOggPO8MG8?usp=drive_link";
@@ -978,9 +979,7 @@ export default function HouseCupPointLogger() {
           <section className="hc-card"><div className="hc-row"><button type="button" onClick={syncSheet} className="hc-button">🔄 Sync Sheet</button><a className="hc-button secondary" href={GOOGLE_SUBMISSIONS_SHEET_URL} target="_blank" rel="noreferrer">Open Google Sheet</a><button type="button" onClick={() => downloadCSV(rows)} disabled={!rows.length} className="hc-button">⬇️ Download CSV</button></div><div className="hc-alert">{sheetStatus}</div><h3>Submission log</h3><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>When</th><th>Date</th><th>Name</th><th>House</th><th>Activity</th><th>Pts</th><th>Status</th><th>Photo</th><th>Source</th></tr></thead><tbody>{rows.map((row, index) => <tr key={row.submissionId || row.timestamp + "-" + index}><td>{row.timestamp ? new Date(row.timestamp).toLocaleString() : ""}</td><td>{row.date}</td><td>{row.name}</td><td>{row.house}</td><td>{row.activity}</td><td><b>{row.points}</b></td><td>{row.status || "approved"}</td><td>{row.photoUrl ? <a href={row.photoUrl} target="_blank" rel="noreferrer">photo</a> : ""}</td><td>{row.source}</td></tr>)}{!rows.length && <tr><td colSpan="9" style={{ textAlign: "center", color: "#64748b" }}>No points logged yet.</td></tr>}</tbody></table></div><h3 style={{ marginTop: 22 }}>Roster reference</h3><p className="hc-muted">Use this to check house assignments when logging attendance or adding new folks to the external roster sheet.</p><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>Name</th><th>House</th><th>Role</th></tr></thead><tbody>{ROSTER.slice().sort((a, b) => a.house.localeCompare(b.house) || a.role.localeCompare(b.role) || a.name.localeCompare(b.name)).map((person) => <tr key={person.name}><td>{person.name}</td><td>{person.house}</td><td>{person.role}</td></tr>)}</tbody></table></div></section>
         )}
       </div>
+      <Analytics />
     </div>
-  );
-}
-
   );
 }
