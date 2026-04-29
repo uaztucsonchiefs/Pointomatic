@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 
 const ADMIN_EMAIL = "nathantwalton@gmail.com";
 const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX3e1Hf4ExWgkwJK6gjevOggPO8MG8?usp=drive_link";
+const GOOGLE_SUBMISSIONS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1-qxEZt2q_n6Len0yIcMfODnLyIsDfz-yhD60AkcSz5U/edit?gid=0#gid=0";
 const APPS_SCRIPT_WEB_APP_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
-  "https://script.google.com/macros/s/AKfycbzM3DKjDm94gJnygSTFS1y4DVDriQ0b7mXBRpX5KEahjYz2vm8tlfCyhcZkgykC8TeM/exec";
+  "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
 
@@ -780,7 +781,7 @@ export default function HouseCupPointLogger() {
       people: people.trim(),
       note: finalQuestType === "point_pitch" ? "Requested " + finalPoints + " point(s): " + note.trim() : note.trim(),
       photoName,
-      photoStatus: photoName ? "selected_locally_not_uploaded" : "none",
+      photoStatus: photoName ? "upload_requested" : "none",
       source: finalQuestType === "point_pitch" ? "resident_point_pitch" : "resident_log",
       uploadedBy: "resident",
       status: finalQuestType === "point_pitch" ? "pending_review" : "approved",
@@ -796,7 +797,7 @@ export default function HouseCupPointLogger() {
     setSubmitStatus("Uploading to Google Sheet/Drive...");
     try {
       await submitToAppsScript(row, photoFile);
-      setSubmitStatus("Submitted to Google Sheet/Drive. Use Sync Sheet to refresh shared leaderboard.");
+      setSubmitStatus("Submitted.");
     } catch (error) {
       console.error(error);
       setSubmitStatus("Saved locally, but Google upload failed. Export CSV as backup.");
@@ -846,6 +847,38 @@ export default function HouseCupPointLogger() {
     setUploadMessage("");
     setBonusMessage("");
     setApprovalMessage("");
+    setSheetStatus("Local browser data cleared. Google Sheet data is unchanged.");
+  }
+
+  async function testBackendConnection() {
+    try {
+      setSheetStatus("Testing Apps Script backend...");
+      await submitToAppsScript({
+        timestamp: new Date().toISOString(),
+        date: todayString(),
+        name: "backend test",
+        house: getChiefHouse(currentChief) || "Unknown",
+        activity: "backend connection test",
+        points: 0,
+        category: "Test",
+        questType: "backend_test",
+        people: "",
+        note: "If this row appears in the Submissions sheet, the web app is connected to Apps Script.",
+        photoName: "",
+        photoStatus: "not_required",
+        source: "web_app_backend_test",
+        uploadedBy: currentChief || "chief",
+        status: "approved",
+        reviewedBy: currentChief || "",
+        reviewedAt: new Date().toISOString(),
+        reviewNote: "",
+        submissionId: makeSubmissionId(),
+      }, null);
+      setSheetStatus("Backend test sent. Check the Submissions sheet for a backend connection test row.");
+    } catch (error) {
+      setSheetStatus("Backend test failed locally. Check Apps Script URL/deployment/access.");
+      console.error(error);
+    }
   }
 
   return (
@@ -929,7 +962,7 @@ export default function HouseCupPointLogger() {
 
         {activeTab === "chief" && chiefAuthed && (
           <section className="hc-card"><div className="hc-row" style={{ justifyContent: "space-between" }}><div><h2>Secret Chief Lair</h2><p className="hc-muted">Logged in as <b>{currentChief}</b> ({getChiefHouse(currentChief)}). AHD/conference upload = 1 point/hour by default. Kahoot/trivia/custom bonuses are manually awarded here.</p></div><button type="button" className="hc-button secondary" onClick={() => { setChiefAuthed(false); setCurrentChief(""); setActiveTab("chiefLogin"); }}>Log out</button></div>
-            <div className="hc-card" style={{ boxShadow: "none" }}><h3>Google Docs / Drive settings</h3><p className="hc-muted">Admin/contact: <b>{ADMIN_EMAIL}</b>. Evidence folder: <a href={GOOGLE_EVIDENCE_FOLDER_URL} target="_blank" rel="noreferrer">open Google Drive folder</a>. Apps Script upload endpoint is connected.</p></div>
+            <div className="hc-card" style={{ boxShadow: "none" }}><h3>Google Docs / Drive settings</h3><p className="hc-muted">Admin/contact: <b>{ADMIN_EMAIL}</b>. Submissions sheet: <a href={GOOGLE_SUBMISSIONS_SHEET_URL} target="_blank" rel="noreferrer">open Google Sheet</a>. Evidence folder: <a href={GOOGLE_EVIDENCE_FOLDER_URL} target="_blank" rel="noreferrer">open Google Drive folder</a>. Apps Script endpoint: <a href={APPS_SCRIPT_WEB_APP_URL} target="_blank" rel="noreferrer">open backend</a>.</p><div className="hc-row" style={{ marginTop: 10 }}><button type="button" className="hc-button secondary" onClick={testBackendConnection}>Send backend test row</button><button type="button" onClick={clearRows} disabled={!rows.length} className="hc-button danger">Clear local browser data</button></div><p className="hc-muted">Clearing local data only resets this browser. It does not delete the Google Sheet.</p></div>
             <div className="hc-card" style={{ boxShadow: "none" }}><h3>Featured Quest / Monthly Wellness controls</h3><p className="hc-muted">This updates this browser and is saved locally. To make it global across everyone, store settings in the Sheet backend later.</p><div className="hc-grid hc-grid-4"><div><FieldLabel>Featured quest idea bank</FieldLabel><SelectInput value={featuredSuggestion} onChange={(event) => { setFeaturedSuggestion(event.target.value); setCurrentFeaturedQuest(event.target.value); }}>{FEATURED_QUEST_IDEAS.map((idea) => <option key={idea} value={idea}>{idea}</option>)}</SelectInput><button type="button" className="hc-button secondary" style={{ marginTop: 8 }} onClick={() => { const idea = getRandomFeaturedQuestIdea(); setFeaturedSuggestion(idea); setCurrentFeaturedQuest(idea); }}>🎲 Random sweet quest</button></div><div><FieldLabel>Current featured quest</FieldLabel><TextInput value={currentFeaturedQuest} onChange={(event) => setCurrentFeaturedQuest(event.target.value)} /></div><div><FieldLabel>Featured quest note</FieldLabel><TextInput value={currentFeaturedNote} onChange={(event) => setCurrentFeaturedNote(event.target.value)} /></div><div><FieldLabel>Monthly wellness challenge</FieldLabel><SelectInput value={currentMonthlyWellnessMonth} onChange={(event) => setCurrentMonthlyWellnessMonth(event.target.value)}>{MONTHLY_WELLNESS_QUESTS.map((month) => <option key={month.month} value={month.month}>{month.month}: {month.theme}</option>)}</SelectInput></div></div><div className="hc-quest-card">Resident view now shows: Featured Quest — {currentFeaturedQuest} (+5)</div><div className="hc-quest-card">Monthly Wellness: {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).month} — {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).quest}</div></div>
             <div className="hc-grid hc-grid-4" style={{ marginTop: 18 }}><div><FieldLabel>AHD event title</FieldLabel><TextInput value={attendanceTitle} onChange={(event) => setAttendanceTitle(event.target.value)} /></div><div><FieldLabel>Date</FieldLabel><TextInput type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} /></div><div><FieldLabel>Points/hour</FieldLabel><TextInput type="number" min="1" value={attendancePoints} onChange={(event) => setAttendancePoints(event.target.value)} /></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button" onClick={importAttendance}>Upload AHD</button></div></div>
             <div style={{ marginTop: 12 }}><FieldLabel>AHD/conference attendees</FieldLabel><textarea className="hc-input" style={{ minHeight: 110 }} value={attendanceText} onChange={(event) => setAttendanceText(event.target.value)} placeholder={"Paste names here:\nNate Walton\nResident Example\nFaculty Example"} /></div>{uploadMessage && <div className="hc-success">{uploadMessage}</div>}{unknownUploads.length > 0 && <div className="hc-alert">{unknownUploads.length} uploaded attendee(s) did not match roster.</div>}
@@ -942,9 +975,12 @@ export default function HouseCupPointLogger() {
         )}
 
         {activeTab === "data" && (
-          <section className="hc-card"><div className="hc-row"><button type="button" onClick={syncSheet} className="hc-button">🔄 Sync Sheet</button><button type="button" onClick={() => downloadCSV(rows)} disabled={!rows.length} className="hc-button">⬇️ Download CSV</button><button type="button" onClick={clearRows} disabled={!rows.length} className="hc-button danger">🗑️ Clear local data</button></div><div className="hc-alert">{sheetStatus}</div><h3>Submission log</h3><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>When</th><th>Date</th><th>Name</th><th>House</th><th>Activity</th><th>Pts</th><th>Status</th><th>Photo</th><th>Source</th></tr></thead><tbody>{rows.map((row, index) => <tr key={row.submissionId || row.timestamp + "-" + index}><td>{row.timestamp ? new Date(row.timestamp).toLocaleString() : ""}</td><td>{row.date}</td><td>{row.name}</td><td>{row.house}</td><td>{row.activity}</td><td><b>{row.points}</b></td><td>{row.status || "approved"}</td><td>{row.photoUrl ? <a href={row.photoUrl} target="_blank" rel="noreferrer">photo</a> : ""}</td><td>{row.source}</td></tr>)}{!rows.length && <tr><td colSpan="9" style={{ textAlign: "center", color: "#64748b" }}>No points logged yet.</td></tr>}</tbody></table></div><h3 style={{ marginTop: 22 }}>Roster reference</h3><p className="hc-muted">Use this to check house assignments when logging attendance or adding new folks to the external roster sheet.</p><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>Name</th><th>House</th><th>Role</th></tr></thead><tbody>{ROSTER.slice().sort((a, b) => a.house.localeCompare(b.house) || a.role.localeCompare(b.role) || a.name.localeCompare(b.name)).map((person) => <tr key={person.name}><td>{person.name}</td><td>{person.house}</td><td>{person.role}</td></tr>)}</tbody></table></div></section>
+          <section className="hc-card"><div className="hc-row"><button type="button" onClick={syncSheet} className="hc-button">🔄 Sync Sheet</button><a className="hc-button secondary" href={GOOGLE_SUBMISSIONS_SHEET_URL} target="_blank" rel="noreferrer">Open Google Sheet</a><button type="button" onClick={() => downloadCSV(rows)} disabled={!rows.length} className="hc-button">⬇️ Download CSV</button></div><div className="hc-alert">{sheetStatus}</div><h3>Submission log</h3><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>When</th><th>Date</th><th>Name</th><th>House</th><th>Activity</th><th>Pts</th><th>Status</th><th>Photo</th><th>Source</th></tr></thead><tbody>{rows.map((row, index) => <tr key={row.submissionId || row.timestamp + "-" + index}><td>{row.timestamp ? new Date(row.timestamp).toLocaleString() : ""}</td><td>{row.date}</td><td>{row.name}</td><td>{row.house}</td><td>{row.activity}</td><td><b>{row.points}</b></td><td>{row.status || "approved"}</td><td>{row.photoUrl ? <a href={row.photoUrl} target="_blank" rel="noreferrer">photo</a> : ""}</td><td>{row.source}</td></tr>)}{!rows.length && <tr><td colSpan="9" style={{ textAlign: "center", color: "#64748b" }}>No points logged yet.</td></tr>}</tbody></table></div><h3 style={{ marginTop: 22 }}>Roster reference</h3><p className="hc-muted">Use this to check house assignments when logging attendance or adding new folks to the external roster sheet.</p><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>Name</th><th>House</th><th>Role</th></tr></thead><tbody>{ROSTER.slice().sort((a, b) => a.house.localeCompare(b.house) || a.role.localeCompare(b.role) || a.name.localeCompare(b.name)).map((person) => <tr key={person.name}><td>{person.name}</td><td>{person.house}</td><td>{person.role}</td></tr>)}</tbody></table></div></section>
         )}
       </div>
     </div>
+  );
+}
+
   );
 }
