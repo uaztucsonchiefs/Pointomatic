@@ -11,8 +11,7 @@ const ADMIN_EMAIL = "uaztucsonchiefs@gmail.com";
 const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX3e1Hf4ExWgkwJK6gjevOggPO8MG8?usp=drive_link";
 
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
-const APPS_SCRIPT_WEB_APP_URL = https://script.google.com/macros/s/AKfycbzoVPp0cPx-Bc1KnDPcQBXjT82dE5e6IABKbOH1Q9IZg_vT8wttjcW87T5R6KBPB9Q/exec
-  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
+const APPS_SCRIPT_WEB_APP_URL =
   "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
