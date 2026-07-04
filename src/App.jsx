@@ -1,1237 +1,1857 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Analytics } from "@vercel/analytics/react";
 
-const ADMIN_EMAIL = "nathantwalton@gmail.com";
-const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX3e1Hf4ExWgkwJK6gjevOggPO8MG8?usp=drive_link";
-const GOOGLE_SUBMISSIONS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1-qxEZt2q_n6Len0yIcMfODnLyIsDfz-yhD60AkcSz5U/edit?gid=0#gid=0";
-const APPS_SCRIPT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
+/*
+  House Cup Point-O-Matic
+  Mobile-first resident submission update
 
-const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
+  Replace these three constants after you finish the chiefs-Gmail migration.
+*/
+const APPS_SCRIPT_WEB_APP_URL =
+  "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
-const STORAGE_KEYS = {
-  rows: "houseCupRowsV1",
-  featuredQuest: "houseCupFeaturedQuestV1",
-  featuredNote: "houseCupFeaturedNoteV1",
-  monthlyWellnessMonth: "houseCupMonthlyWellnessMonthV1",
-  customRoster: "houseCupCustomRosterV1",
-  photoChallenge: "houseCupPhotoChallengeV1",
-};
+const GOOGLE_SUBMISSIONS_SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/PASTE_NEW_SPREADSHEET_ID_HERE/edit";
+
+const GOOGLE_EVIDENCE_FOLDER_URL =
+  "https://drive.google.com/drive/folders/PASTE_NEW_FOLDER_ID_HERE";
+
+const ADMIN_EMAIL = "uaztucsonchiefs@gmail.com";
+
+const HOUSES = [
+  { name: "Catalina", icon: "🏔️" },
+  { name: "Rincon", icon: "🌄" },
+  { name: "Santa Rita", icon: "🌵" },
+  { name: "Tortolita", icon: "🦎" },
+  { name: "Tucson", icon: "☀️" },
+];
 
 const CHIEF_USERS = [
-  { name: "Nate", password: "wootwoot1!", house: "Catalina" },
-  { name: "Rosie", password: "wootwoot1!", house: "Rincon" },
-  { name: "Amrutha", password: "wootwoot1!", house: "Santa Rita" },
-  { name: "Will", password: "wootwoot1!", house: "Tortolita" },
-  { name: "Johnny", password: "wootwoot1!", house: "Tucson" },
+  { name: "Nate", fullName: "Nate Walton", password: "wootwoot1!" },
+  { name: "Rosie", fullName: "Rosie Turk", password: "wootwoot1!" },
+  { name: "Amrutha", fullName: "Amrutha Doniparthi", password: "wootwoot1!" },
+  { name: "Will", fullName: "Will Waidelich", password: "wootwoot1!" },
+  { name: "Johnny", fullName: "Johnny Trinh", password: "wootwoot1!" },
+];
+
+const QUESTS = [
+  {
+    key: "group_activity",
+    icon: "👯",
+    title: "Group activity",
+    shortTitle: "Group",
+    points: 2,
+    status: "approved",
+    notePlaceholder: "What did you do? Who was there?",
+  },
+  {
+    key: "exercise",
+    icon: "💪",
+    title: "Exercise / wellness",
+    shortTitle: "Exercise",
+    points: 2,
+    status: "approved",
+    notePlaceholder: "Run, lift, hike, bike, yoga, pickleball, etc.",
+  },
+  {
+    key: "academic",
+    icon: "🧠",
+    title: "Academic flex",
+    shortTitle: "Academic",
+    points: 3,
+    status: "approved",
+    notePlaceholder: "Questions, teaching, article, chalk talk, etc.",
+  },
+  {
+    key: "community",
+    icon: "🌿",
+    title: "Wellness + community",
+    shortTitle: "Community",
+    points: 3,
+    status: "approved",
+    notePlaceholder: "Volunteer, potluck, resident support, community thing.",
+  },
+  {
+    key: "big_tucson",
+    icon: "🌵",
+    title: "Big Tucson challenge",
+    shortTitle: "Tucson",
+    points: 5,
+    status: "approved",
+    notePlaceholder: "Mt. Lemmon, Sabino, Tumamoc, local chaos, etc.",
+  },
+  {
+    key: "pitch",
+    icon: "🤔",
+    title: "Pitch me points",
+    shortTitle: "Pitch",
+    points: "",
+    status: "pending",
+    notePlaceholder: "Sell this to the chiefs. What happened and why is it point-worthy?",
+  },
 ];
 
 const ROSTER = [
-  { name: "Adam Western", house: "Tortolita", role: "PGY2" },
-  { name: "Adrianna Diviero", house: "Tucson", role: "PGY2" },
-  { name: "Ajdin Ekic", house: "Tortolita", role: "PGY3" },
-  { name: "Alex Wang", house: "Catalina", role: "PGY1" },
-  { name: "Alexander Candel", house: "Tucson", role: "PGY1" },
-  { name: "Alousius Fombang", house: "Tortolita", role: "PGY1" },
-  { name: "Amanda Gong", house: "Catalina", role: "PGY1" },
-  { name: "Amrutha Doniparthi", house: "Santa Rita", role: "Chief" },
-  { name: "Amy Sussman", house: "Tortolita", role: "PD_APD" },
-  { name: "Andres Sanchez", house: "Santa Rita", role: "PGY2" },
-  { name: "Angela Monetathchi", house: "Santa Rita", role: "PGY1" },
-  { name: "Anthony Witten", house: "Catalina", role: "PD_APD" },
-  { name: "Arpan Sharma", house: "Rincon", role: "PGY1" },
-  { name: "Asael Nunez", house: "Santa Rita", role: "PGY3" },
-  { name: "Basem Al-Tarshan", house: "Catalina", role: "PGY1" },
-  { name: "Benjamin Maglajac", house: "Rincon", role: "PGY2" },
-  { name: "Brett Martin", house: "Tortolita", role: "PGY2" },
-  { name: "Brielle Tobin", house: "Tortolita", role: "PGY1" },
-  { name: "Bryce Little", house: "Rincon", role: "PGY1" },
-  { name: "Bujji Ainapurapu", house: "Tucson", role: "PD_APD" },
-  { name: "Cassandra Everly", house: "Santa Rita", role: "PGY3" },
-  { name: "Celeste Gracey", house: "Catalina", role: "PGY3" },
-  { name: "Christian Avalos", house: "Tortolita", role: "PGY3" },
-  { name: "Christopher Sallurday", house: "Rincon", role: "PGY2" },
-  { name: "Cole Sander", house: "Catalina", role: "PGY1" },
-  { name: "Costa Dalis", house: "Santa Rita", role: "PGY2" },
-  { name: "D'Andre Gomez", house: "Rincon", role: "PGY1" },
-  { name: "Dalia Mikhail", house: "Rincon", role: "PD_APD" },
-  { name: "Danielle Bailey", house: "Santa Rita", role: "PGY3" },
-  { name: "David Hendrix", house: "Santa Rita", role: "PGY3" },
-  { name: "Dimitrios Filioglou", house: "Santa Rita", role: "PGY1" },
-  { name: "Drew Rasmussen", house: "Tucson", role: "PGY3" },
-  { name: "Dustin Parsons", house: "Tortolita", role: "PGY3" },
-  { name: "Duy Nguyen", house: "Santa Rita", role: "PGY1" },
-  { name: "Dwani Patel", house: "Santa Rita", role: "PGY3" },
-  { name: "Eduardo Garcia Licerio", house: "Rincon", role: "PGY3" },
-  { name: "Emily Adamson", house: "Rincon", role: "PGY2" },
-  { name: "Emily Ploom", house: "Rincon", role: "PGY1" },
-  { name: "Emily Tishkoff", house: "Catalina", role: "PGY3" },
-  { name: "Esther Cheng", house: "Tucson", role: "PGY2" },
-  { name: "Ethan Renfrew", house: "Rincon", role: "PGY2" },
-  { name: "Eric Brucks", house: "Tucson", role: "PD_APD" },
-  { name: "Faissal Stipho", house: "Santa Rita", role: "PGY3" },
-  { name: "Faith Kim", house: "Rincon", role: "PGY2" },
-  { name: "Francine Holguin", house: "Tucson", role: "PGY1" },
-  { name: "Frederick Pan", house: "Tucson", role: "PGY1" },
-  { name: "Gagandeep Gill", house: "Catalina", role: "PGY2" },
-  { name: "Gowtham Anche", house: "Tucson", role: "PGY2" },
-  { name: "Grace Speer", house: "Tucson", role: "PGY2" },
-  { name: "Henry Lang", house: "Catalina", role: "PGY1" },
-  { name: "Ho Hyun Lee", house: "Santa Rita", role: "PGY1" },
-  { name: "Hyun Kim", house: "Santa Rita", role: "PGY2" },
-  { name: "Indu Partha", house: "Tucson", role: "PD_APD" },
-  { name: "Isaac Zarif", house: "Tucson", role: "PGY1" },
-  { name: "Isabella Campos Aguiar", house: "Santa Rita", role: "PGY1" },
-  { name: "Isam Alannouf", house: "Tortolita", role: "PGY1" },
-  { name: "Itzel Sazesuz", house: "Tucson", role: "STAFF" },
-  { name: "Jackie Hu", house: "Catalina", role: "PGY3" },
-  { name: "Jared Stillman", house: "Tortolita", role: "PGY3" },
-  { name: "Jason Chen", house: "Tucson", role: "PGY1" },
-  { name: "Jasmine Coatley-Thomas", house: "Rincon", role: "PGY1" },
-  { name: "Jazmine Koli", house: "Tortolita", role: "STAFF" },
-  { name: "Jesse Coy", house: "Catalina", role: "PGY1" },
-  { name: "Jesse Ritter", house: "Rincon", role: "PGY3" },
-  { name: "Jessica Kitsen", house: "Rincon", role: "PGY3" },
-  { name: "Joey Ghotmi", house: "Catalina", role: "PGY1" },
-  { name: "Johnny Trinh", house: "Tucson", role: "Chief" },
-  { name: "Jocelyn Liu", house: "Rincon", role: "PGY1" },
-  { name: "Joshua Malo", house: "Santa Rita", role: "PD_APD" },
-  { name: "Joshua Nay", house: "Catalina", role: "PGY1" },
-  { name: "Joy Eskandar", house: "Catalina", role: "PGY2" },
-  { name: "JP Ferriera", house: "Catalina", role: "PD_APD" },
-  { name: "Justin Le", house: "Santa Rita", role: "PGY2" },
-  { name: "Kaitlyn Baber", house: "Santa Rita", role: "PGY3" },
-  { name: "Kalvin Thomas", house: "Santa Rita", role: "PGY3" },
-  { name: "Kassandra Mastras", house: "Catalina", role: "PGY1" },
-  { name: "Kathryn Pulling", house: "Rincon", role: "PGY3" },
-  { name: "Keanna Encinas", house: "Rincon", role: "STAFF" },
-  { name: "Kellie Jeong", house: "Tucson", role: "PGY3" },
-  { name: "Kenneth Silvestro", house: "Tucson", role: "PGY2" },
-  { name: "Kent Lawrence", house: "Rincon", role: "PGY1" },
-  { name: "Khaja Siddiqui", house: "Catalina", role: "PGY2" },
-  { name: "Laura Meinke", house: "Rincon", role: "PD_APD" },
-  { name: "Laura Tran", house: "Tortolita", role: "PGY2" },
-  { name: "Laura Zelis", house: "Tortolita", role: "PGY1" },
-  { name: "Levi Cohen", house: "Santa Rita", role: "PGY1" },
-  { name: "Luca Bertozzi", house: "Catalina", role: "PGY2" },
-  { name: "Mariah Black", house: "Catalina", role: "PGY1" },
-  { name: "Marlee Panther", house: "Tortolita", role: "PGY3" },
-  { name: "Matthew Lansman", house: "Santa Rita", role: "PGY3" },
-  { name: "Matthew Ward", house: "Rincon", role: "PGY3" },
-  { name: "Mattia Walter", house: "Catalina", role: "PGY3" },
-  { name: "Mathew Thomas", house: "Tortolita", role: "PGY3" },
-  { name: "Megan Kohn", house: "Tortolita", role: "PGY2" },
-  { name: "Michael Palomares", house: "Santa Rita", role: "PGY2" },
-  { name: "Milan Hirpara", house: "Tortolita", role: "PGY1" },
-  { name: "Mohamad Al-Mula Hwaish", house: "Tortolita", role: "PGY2" },
-  { name: "Monica Angeletti", house: "Rincon", role: "PGY3" },
-  { name: "Mujtaba Shah", house: "Santa Rita", role: "PGY2" },
-  { name: "Myles Bosompem", house: "Santa Rita", role: "PGY1" },
-  { name: "Nandini Sodhi", house: "Tucson", role: "PGY1" },
-  { name: "Nassim Idouraine", house: "Tortolita", role: "PGY1" },
-  { name: "Nellie Toliver", house: "Tortolita", role: "PGY2" },
   { name: "Nate Walton", house: "Catalina", role: "Chief" },
-  { name: "Nathan Giauque", house: "Tucson", role: "PGY3" },
-  { name: "Nicholas Genz", house: "Catalina", role: "PGY3" },
-  { name: "Nicole Price", house: "Rincon", role: "PGY2" },
-  { name: "Nina Maitra", house: "Tucson", role: "PGY2" },
-  { name: "Noorhan Monther", house: "Tortolita", role: "PGY2" },
-  { name: "Paige Awtrey", house: "Tucson", role: "PGY1" },
-  { name: "Rajesh Kotagiri", house: "Tortolita", role: "PD_APD" },
-  { name: "Rachael Rosow", house: "Santa Rita", role: "PGY2" },
-  { name: "Rambod Meshgi", house: "Santa Rita", role: "PGY1" },
-  { name: "Rami Khoshaba", house: "Tortolita", role: "PGY1" },
-  { name: "Ricardo Reyes", house: "Tortolita", role: "PGY2" },
-  { name: "Rishab Srivastava", house: "Tucson", role: "PGY3" },
-  { name: "Robert Sumner", house: "Tortolita", role: "PGY3" },
-  { name: "Rosie Turk", house: "Rincon", role: "Chief" },
-  { name: "Ryan Hakim", house: "Catalina", role: "PGY1" },
-  { name: "Ryan Schmidt", house: "Catalina", role: "PGY2" },
-  { name: "Ryan Waggoner", house: "Santa Rita", role: "PGY1" },
-  { name: "Ryan Weyker", house: "Tortolita", role: "PGY3" },
-  { name: "Ryan Wong", house: "Santa Rita", role: "PD_APD" },
-  { name: "Sara Castaneda", house: "Rincon", role: "PGY1" },
-  { name: "Sarah Busch", house: "Catalina", role: "PGY2" },
-  { name: "Shaik Firdhos", house: "Tucson", role: "PGY1" },
-  { name: "Shana Zadron", house: "Tucson", role: "PGY1" },
-  { name: "Shenar Dinkha", house: "Catalina", role: "PGY3" },
-  { name: "Shawn Wang", house: "Tucson", role: "PGY2" },
-  { name: "Shreeya Agrawal", house: "Rincon", role: "PGY2" },
-  { name: "Soojung Choi", house: "Tortolita", role: "PGY1" },
-  { name: "Spencer Chee", house: "Tucson", role: "PGY2" },
-  { name: "Srijit Paul", house: "Catalina", role: "PGY1" },
-  { name: "Stacy Ploom", house: "Rincon", role: "PGY3" },
-  { name: "Suzette Lopez Valenzuela", house: "Rincon", role: "PGY1" },
-  { name: "Swathi Somisetty", house: "Rincon", role: "PGY3" },
-  { name: "Swetha Vennelaganti", house: "Tucson", role: "PGY3" },
-  { name: "Sydney Lovins", house: "Rincon", role: "PGY2" },
-  { name: "Tammy Zamaitis", house: "Santa Rita", role: "PGY3" },
-  { name: "Tim Yu", house: "Catalina", role: "PGY2" },
-  { name: "Tolulope Popoola", house: "Tucson", role: "PGY3" },
-  { name: "Tyler Hill", house: "Tucson", role: "PGY1" },
-  { name: "Will Waidelich", house: "Tortolita", role: "Chief" },
-  { name: "William Matloff", house: "Tortolita", role: "PGY3" },
-  { name: "Yuvia Anaya", house: "Catalina", role: "STAFF" },
+  { name: "Amrutha Doniparthi", house: "Rincon", role: "Chief" },
+  { name: "Will Waidelich", house: "Santa Rita", role: "Chief" },
+  { name: "Johnny Trinh", house: "Tortolita", role: "Chief" },
+  { name: "Rosie Turk", house: "Tucson", role: "Chief" },
+  { name: "Mattia Walter", house: "Catalina", role: "Resident", tag: "B" },
+  { name: "David Hendrix", house: "Rincon", role: "Resident", tag: "T" },
+  { name: "Dwani Patel", house: "Santa Rita", role: "Resident", tag: "J" },
+  { name: "Monica Angeletti", house: "Tortolita", role: "Resident", tag: "R" },
+  { name: "Jared Stillman", house: "Tucson", role: "Resident", tag: "J" },
+  { name: "Celeste Gracey", house: "Catalina", role: "Resident", tag: "J" },
+  { name: "Kellie Jeong", house: "Rincon", role: "Resident", tag: "B" },
+  { name: "Matthew Lansman", house: "Santa Rita", role: "Resident", tag: "J" },
+  { name: "Nicholas Genz", house: "Tortolita", role: "Resident", tag: "B" },
+  { name: "Swetha Vennelaganti", house: "Tucson", role: "Resident", tag: "B" },
+  { name: "Robert Sumner", house: "Catalina", role: "Resident", tag: "R" },
+  { name: "Costa Dalis", house: "Rincon", role: "Resident", tag: "J" },
+  { name: "Kaitlyn Baber", house: "Santa Rita", role: "Resident", tag: "R" },
+  { name: "Jesse Ritter", house: "Tortolita", role: "Resident", tag: "B" },
+  { name: "Faith Kim", house: "Tucson", role: "Resident", tag: "T" },
+  { name: "Tim Yu", house: "Catalina", role: "Resident", tag: "T" },
+  { name: "Levi Cohen", house: "Rincon", role: "Resident", tag: "T" },
+  { name: "Kathryn Pulling", house: "Santa Rita", role: "Resident", tag: "T" },
+  { name: "Swathi Somisetty", house: "Tortolita", role: "Resident", tag: "J" },
+  { name: "Ryan Schmidt", house: "Tucson", role: "Resident", tag: "R" },
+  { name: "Justin Le", house: "Catalina", role: "Resident", tag: "J" },
+  { name: "Dimitrios Filloglou", house: "Rincon", role: "Resident", tag: "B" },
+  { name: "Adrianna Diviero", house: "Santa Rita", role: "Resident", tag: "B" },
+  { name: "Grace Speer", house: "Tortolita", role: "Resident", tag: "T" },
+  { name: "Frederick Pan", house: "Tucson", role: "Resident", tag: "T" },
+  { name: "Isabella Campos Aguiar", house: "Catalina", role: "Resident", tag: "R" },
+  { name: "Shaik Firdhos", house: "Rincon", role: "Resident", tag: "J" },
+  { name: "Rami Khoshaba", house: "Santa Rita", role: "Resident", tag: "T" },
+  { name: "Megan Kohn", house: "Tortolita", role: "Resident", tag: "R" },
+  { name: "Emily Ploom", house: "Tucson", role: "Resident", tag: "B" },
+  { name: "Alexander Candel", house: "Catalina", role: "Resident", tag: "T" },
+  { name: "Alousius Fombang", house: "Rincon", role: "Resident", tag: "R" },
+  { name: "Henry Lang", house: "Santa Rita", role: "Resident", tag: "R" },
+  { name: "Kenneth Silvestro", house: "Tortolita", role: "Resident", tag: "J" },
+  { name: "Cole Sander", house: "Tucson", role: "Resident", tag: "J" },
+  { name: "Nassim Idouraine", house: "Rincon", role: "Resident", tag: "R" },
+  { name: "Bryce Little", house: "Santa Rita", role: "Resident", tag: "B" },
+  { name: "Duy Nguyen", house: "Tortolita", role: "Resident", tag: "T" },
+  { name: "Arpan Sharma", house: "Tucson", role: "Resident", tag: "R" },
+  { name: "Rishab Srivastava", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "Kalvin Thomas", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Ajdin Ekic", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Mathew Thomas", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "Drew Rasmussen", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Faissal Stipho", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "Matthew Ward", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Dustin Parsons", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Marlee Panther", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "Danielle Bailey", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Shenar Dinkha", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "William Matloff", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Ricardo Reyes", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Christian Avalos", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "Ryan Weyker", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Asael Nunez", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "Sydney Lovins", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Christopher Sallurday", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Eduardo Garcia Licerio", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "Tammy Zamaitis", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Spencer Chee", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "Gowtham Anche", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Gagandeep Gill", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Emily Tishkoff", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "Mujtaba Shah", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Laura Tran", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "Andres Sanchez", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Brett Martin", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Tolulope Popoola", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "Nellie Toliver", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Joy Eskandar", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "Benjamin Maglajac", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Esther Cheng", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Jessica Kitsen", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "Rachel Rosow", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Emily Adamson", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "Srijit Paul", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Mohamad Al-Mula Hwaish", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Noorhan Monther", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "Nina Maitra", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Ho Hyun Lee", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "Alex Wang", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Nicole Price", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Isaac Zarif", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "Shawn Wang", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Suzette Lopez Valenzuela", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "Kent Lawrence", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Tyler Hill", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Nandini Sodhi", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "Ethan Renfrew", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Jesse Coy", house: "Catalina", role: "Resident", tag: "S" },
+  { name: "Myles Bosompem", house: "Rincon", role: "Resident", tag: "O" },
+  { name: "Mariah Black", house: "Santa Rita", role: "Resident", tag: "C" },
+  { name: "Jasmine Coatley-Thomas", house: "Tortolita", role: "Resident", tag: "P" },
+  { name: "D'Andre Gomez", house: "Tucson", role: "Resident", tag: "A" },
+  { name: "Cassandra Everly", house: "Catalina", role: "Resident" },
+  { name: "Sarah Busch", house: "Rincon", role: "Resident" },
+  { name: "Shreeya Agrawal", house: "Santa Rita", role: "Resident" },
+  { name: "Jackie Maltagliati", house: "Tortolita", role: "Resident" },
+  { name: "Nathan Giauque", house: "Tucson", role: "Resident" },
+  { name: "Adam Western", house: "Catalina", role: "Resident" },
+  { name: "Michael Palomares", house: "Rincon", role: "Resident" },
+  { name: "Luca Bertozzi", house: "Santa Rita", role: "Resident" },
+  { name: "Hyun Kim", house: "Tortolita", role: "Resident" },
+  { name: "Khaja Siddiqui", house: "Tucson", role: "Resident" },
+  { name: "Basem Al-Tarshan", house: "Catalina", role: "Resident" },
+  { name: "Jason Chen", house: "Rincon", role: "Resident" },
+  { name: "Joey Ghotmi", house: "Santa Rita", role: "Resident" },
+  { name: "Angela Monetathchi", house: "Tortolita", role: "Resident" },
+  { name: "Brielle Tobin", house: "Tucson", role: "Resident" },
+  { name: "Sara Castaneda", house: "Catalina", role: "Resident" },
+  { name: "Soojung Choi", house: "Rincon", role: "Resident" },
+  { name: "Kassandra Mastras", house: "Santa Rita", role: "Resident" },
+  { name: "Joshua Nay", house: "Tortolita", role: "Resident" },
+  { name: "Shana Zadron", house: "Tucson", role: "Resident" },
+  { name: "Amanda Gong", house: "Catalina", role: "Resident" },
+  { name: "Milan Hirpara", house: "Rincon", role: "Resident" },
+  { name: "Francine Holguin", house: "Santa Rita", role: "Resident" },
+  { name: "Jocelyn Liu", house: "Tortolita", role: "Resident" },
+  { name: "Isam Allanouf", house: "Tucson", role: "Resident" },
+  { name: "Paige Awtrey", house: "Catalina", role: "Resident" },
+  { name: "Ryan Hakim", house: "Rincon", role: "Resident" },
+  { name: "Rambod Meshgi", house: "Santa Rita", role: "Resident" },
+  { name: "Ryan Waggoner", house: "Tortolita", role: "Resident" },
+  { name: "Laura Zelis", house: "Tucson", role: "Resident" },
+  { name: "Riley Huffman", house: "Catalina", role: "Resident" },
+  { name: "Alexander Kim", house: "Rincon", role: "Resident" },
+  { name: "Lucas Lane", house: "Santa Rita", role: "Resident" },
+  { name: "Christina Lim", house: "Tortolita", role: "Resident" },
+  { name: "Estevan Sandoval", house: "Tucson", role: "Resident" },
+  { name: "Samuel Stewart", house: "Catalina", role: "Resident" },
 ];
-
-const RESIDENT_ACTIVITIES = [
-  { id: "group_activity", label: "Group activity", points: 2, icon: "🤝", color: "#d7ffd8", description: "Dinner, trivia, coffee, game night, house hang. 3+ people." },
-  { id: "group_exercise", label: "Group exercise", points: 2, icon: "🏃", color: "#ffe0bd", description: "Hike, bike, climb, gym, yoga, pickleball, walk. 3+ people." },
-  { id: "academic", label: "Academic flex", points: 3, icon: "🧠", color: "#efe1ff", description: "Journal club, teaching, abstract, presentation, QI/research work. 3+ pts." },
-  { id: "wellness_community", label: "Wellness + community +3", points: 3, icon: "🌵", color: "#c8fff3", description: "Wellness, service, Shubitz, blood donation, helping a friend. +3 pts." },
-  { id: "big_challenge", label: "Big Tucson challenges", points: 5, icon: "🏔️", color: "#fff2aa", description: "" },
-  { id: "point_pitch", label: "Tell me why I should give you points?", points: 0, icon: "🤔", color: "#ffd6ef", description: "For unsanctioned excellence and suspiciously wholesome nonsense." },
-];
-
-const FEATURED_QUEST_IDEAS = [
-  "Find the most judgmental saguaro",
-  "Sunrise before signout",
-  "Best Tucson mural walk",
-  "Touch grass with three people from your house",
-  "Sabino sunrise crew",
-  "Sonoran hot dog + decompression walk",
-  "A Mountain sunset photo",
-  "No-phone nature hour",
-  "Bring joy to the team snack drop",
-  "Write three gratitude notes",
-  "Check in on five colleagues you do not know well",
-  "Hydration hero shift",
-  "Find the weirdest cactus in Tucson",
-  "Farmers market produce quest",
-  "Coffee walk with someone outside your usual crew",
-  "Trail cleanup / leave-it-better mini mission",
-  "House picnic or potluck",
-  "Desert Museum or botanical garden reset",
-  "Meet your interns for coffee, snacks, or a hospital walk",
-  "Ask an intern what would make this month easier, then do one small thing",
-  "Text someone post-call that you appreciate them",
-  "Bring a ridiculous but useful snack to the workroom",
-  "Make a team playlist for prerounds / charting / survival",
-  "Take a walk with someone who looks like they need a reset",
-  "Send one thank-you message to a nurse, MA, pharmacist, RT, or clinic staff member",
-  "Make the call room slightly less cursed",
-  "Teach one thing you wish someone had taught you earlier",
-  "Organize a five-minute stretch break during a long day",
-  "Do a kindness drive-by: coffee, snack, note, or errand for someone slammed",
-  "Find a beautiful Tucson sky and document it for morale",
-  "Have a real conversation with no work talk for ten minutes",
-  "Make a mini survival guide for new interns",
-  "Take a house photo that looks like an album cover",
-  "Create a house motto, chant, handshake, or absolutely unnecessary ritual",
-  "Host a tiny workroom celebration for no good reason",
-  "Share one good thing from the week in your house chat",
-  "Make an intern laugh during a hard shift",
-  "Do something wholesome enough that it feels suspicious",
-];
-
-const QUEST_OPTIONS = [
-  { label: "Featured Quest", points: 5, category: "Big Tucson Challenge", questType: "featured_quest" },
-  { label: "Monthly Wellness Challenge", points: 5, category: "Monthly Wellness", questType: "monthly_wellness" },
-  { label: "Tucson mountain summit", points: 6, category: "Big Tucson Challenge", questType: "summit" },
-  { label: "The Loop ride/walk epic", points: 5, category: "Big Tucson Challenge", questType: "big_tucson" },
-  { label: "Sabino sunrise crew", points: 5, category: "Big Tucson Challenge", questType: "big_tucson" },
-  { label: "Sonoran hot dog + group walk", points: 5, category: "Big Tucson Challenge", questType: "big_tucson" },
-  { label: "Best Tucson mural walk", points: 5, category: "Big Tucson Challenge", questType: "big_tucson" },
-  { label: "Post-call burrito (or equivalent morale meal)", points: 5, category: "Big Tucson Challenge", questType: "big_tucson" },
-  { label: "Sunrise before signout", points: 5, category: "Big Tucson Challenge", questType: "big_tucson" },
-  { label: "Other Big Tucson challenge", points: 5, category: "Big Tucson Challenge", questType: "big_tucson_other" },
-];
-
-const MONTHLY_WELLNESS_QUESTS = [
-  { month: "July", theme: "Housewarming Party", quest: "Motto Motto Medicine — house mottos + meet your interns", vibe: "Identity & Belonging", proof: "House motto/logo photo + photo of something fun with interns, inside or outside the hospital", photo: "House crest reveal: motto/logo + at least 3 house humans" },
-  { month: "August", theme: "Hydrate or Die-drate", quest: "Beat the Heat Step Stampede — cumulative house steps", vibe: "Movement & Heat Survival", proof: "Step screenshot / wearable screenshot", photo: "Sweatiest wholesome step screenshot or desert-safe walk selfie" },
-  { month: "September", theme: "Tiny Teaching, Big Feelings", quest: "Teach Me Something Good — one pearl, chalk talk, article, or mini teaching moment", vibe: "Learning Culture", proof: "Photo/screenshot of teaching, article, whiteboard, or post", photo: "Best chalk-talk board / teaching pearl glamour shot" },
-  { month: "October", theme: "Boo-cson", quest: "Haunted Tucson Field Trip — visit a haunted or historic Tucson spot", vibe: "Fun & Adventure", proof: "Photo at the spot", photo: "Spookiest Tucson photo that remains HR-safe" },
-  { month: "November", theme: "Thanks, I Needed That", quest: "Gratitude + Service Combo Meal — post one gratitude note and complete one service/community action", vibe: "Giving Back", proof: "Gratitude screenshot + service/donation/volunteering photo or receipt", photo: "Most wholesome gratitude/service proof" },
-  { month: "December", theme: "Desert Claus", quest: "Holiday Giving Drive — clothing, food, gifts, or patient/community support", vibe: "Community", proof: "Donation/photo/receipt", photo: "Most festive giving-drive evidence" },
-  { month: "January", theme: "New Year, Same Pager", quest: "Fresh Start Bingo — try a new wellness activity", vibe: "Fresh Start", proof: "Photo/checklist/calendar screenshot", photo: "New year, new coping mechanism" },
-  { month: "February", theme: "Pal-entines", quest: "Connection Quest — check in on 5 colleagues", vibe: "Social Wellness", proof: "Group photo / message screenshot / note", photo: "Best colleague connection selfie or screenshot" },
-  { month: "March", theme: "Peak Freaks", quest: "Peak Bagging Month — summit, hike, or high-effort outdoor adventure", vibe: "Adventure", proof: "Summit photos / route screenshots", photo: "Summit goblin glamour shot" },
-  { month: "April", theme: "Spoke Signals", quest: "Bike Month — house miles by bike, commute, Loop ride, or spin", vibe: "Active Transport", proof: "Mileage screenshot / bike photo", photo: "Best bike/Loop/spin proof" },
-  { month: "May", theme: "Brain Deserves Snacks", quest: "Mental Health Choose-Your-Own-Adventure", vibe: "Mental Health", proof: "Photo, calendar/checklist, streak screenshot, reflection note, or other non-private proof", photo: "Most peaceful non-PHI reset photo" },
-  { month: "June", theme: "Sunrise Survival Club", quest: "Summer Heat Challenge — sunrise workouts + early hikes", vibe: "Resilience", proof: "Sunrise photo / workout screenshot", photo: "Best sunrise survival shot" },
-];
-
-function getStoredValue(key, fallback) {
-  try {
-    if (typeof window === "undefined" || !window.localStorage) return fallback;
-    const value = window.localStorage.getItem(key);
-    return value === null ? fallback : value;
-  } catch (_) {
-    return fallback;
-  }
-}
-
-function getStoredRows() {
-  try {
-    if (typeof window === "undefined" || !window.localStorage) return [];
-    const raw = window.localStorage.getItem(STORAGE_KEYS.rows);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-function getStoredCustomRoster() {
-  try {
-    if (typeof window === "undefined" || !window.localStorage) return [];
-    const raw = window.localStorage.getItem(STORAGE_KEYS.customRoster);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-function setStoredValue(key, value) {
-  try {
-    if (typeof window !== "undefined" && window.localStorage) window.localStorage.setItem(key, value);
-  } catch (_) {}
-}
-
-function setStoredRows(rows) {
-  try {
-    if (typeof window !== "undefined" && window.localStorage) window.localStorage.setItem(STORAGE_KEYS.rows, JSON.stringify(Array.isArray(rows) ? rows : []));
-  } catch (_) {}
-}
-
-function setStoredCustomRoster(roster) {
-  try {
-    if (typeof window !== "undefined" && window.localStorage) window.localStorage.setItem(STORAGE_KEYS.customRoster, JSON.stringify(Array.isArray(roster) ? roster : []));
-  } catch (_) {}
-}
 
 function normalizeName(value) {
-  return String(value === null || value === undefined ? "" : value).trim().toLowerCase().replace(/\s+/g, " ");
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^a-z0-9 '\-]/g, "")
+    .trim();
 }
 
-function dedupeRoster(roster) {
+function dedupePeople(list) {
   const seen = new Set();
-  const result = [];
-  (Array.isArray(roster) ? roster : []).forEach((person) => {
-    if (!person || !person.name) return;
+  return list.filter((person) => {
+    if (!person?.name) return false;
     const key = normalizeName(person.name);
-    if (seen.has(key)) return;
+    if (seen.has(key)) return false;
     seen.add(key);
-    result.push(person);
-  });
-  return result;
-}
-
-function findRosterPersonInList(name, roster) {
-  const normalized = normalizeName(name);
-  if (!normalized) return null;
-  return (Array.isArray(roster) ? roster : []).find((person) => normalizeName(person.name) === normalized) || null;
-}
-
-function findRosterPerson(name) {
-  return findRosterPersonInList(name, ROSTER);
-}
-
-function authenticateChief(name, password) {
-  const user = normalizeName(name);
-  const pass = String(password || "");
-  return CHIEF_USERS.find((chief) => normalizeName(chief.name) === user && chief.password === pass) || null;
-}
-
-function getChiefHouse(chiefName) {
-  const chief = CHIEF_USERS.find((item) => normalizeName(item.name) === normalizeName(chiefName));
-  return chief ? chief.house : "Unknown";
-}
-
-function canChiefApprovePitch(chiefName, submission) {
-  if (!submission) return false;
-  const chiefHouse = getChiefHouse(chiefName);
-  return chiefHouse !== "Unknown" && submission.house !== "Unknown" && chiefHouse !== submission.house;
-}
-
-function todayString() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function getRandomFeaturedQuestIdea() {
-  return FEATURED_QUEST_IDEAS[Math.floor(Math.random() * FEATURED_QUEST_IDEAS.length)] || FEATURED_QUEST_IDEAS[0];
-}
-
-function getCurrentMonthlyWellnessQuest(monthOverride) {
-  const monthName = monthOverride || new Date().toLocaleString("en-US", { month: "long" });
-  return MONTHLY_WELLNESS_QUESTS.find((item) => item.month === monthName) || MONTHLY_WELLNESS_QUESTS[0];
-}
-
-function calculateHouseTotals(rows) {
-  const base = {};
-  HOUSES.forEach((house) => { base[house] = 0; });
-  (Array.isArray(rows) ? rows : []).forEach((row) => {
-    if (!row || !row.house || row.house === "Unknown") return;
-    if (row.status === "denied" || row.status === "pending_review") return;
-    base[row.house] = (base[row.house] || 0) + Number(row.points || 0);
-  });
-  return HOUSES.map((house) => ({ house, points: base[house] || 0 })).sort((a, b) => b.points - a.points || a.house.localeCompare(b.house));
-}
-
-function getPendingPointPitches(rows) {
-  return (Array.isArray(rows) ? rows : []).filter((row) => row && row.source === "resident_point_pitch" && row.status === "pending_review");
-}
-
-function reviewPointPitchRows(rows, submissionKey, decision, approvedPoints, chiefName, reviewNote) {
-  return rows.map((row, index) => {
-    const key = row.submissionId || row.timestamp + "-" + index;
-    if (key !== submissionKey || !canChiefApprovePitch(chiefName, row)) return row;
-    return {
-      ...row,
-      points: decision === "approve" ? Number(approvedPoints || row.points || 0) : 0,
-      status: decision === "approve" ? "approved" : "denied",
-      reviewedBy: chiefName,
-      reviewedAt: new Date().toISOString(),
-      reviewNote: reviewNote || (decision === "approve" ? "Approved by chief from different house" : "Denied by chief from different house"),
-    };
+    return true;
   });
 }
 
-function splitAttendanceNames(text) {
-  return String(text || "").split(/\r?\n|,/).map((name) => name.trim()).filter(Boolean);
+function findRosterPerson(name, roster = ROSTER) {
+  const needle = normalizeName(name);
+  if (!needle) return null;
+  return (
+    roster.find((p) => normalizeName(p.name) === needle) ||
+    roster.find((p) => normalizeName(p.name).includes(needle) || needle.includes(normalizeName(p.name))) ||
+    null
+  );
 }
 
-function attendanceTextToRows(options) {
-  const opts = options || {};
-  const uploadedBy = opts.uploadedBy || "Unknown chief";
-  return splitAttendanceNames(opts.text || "").map((name) => {
-    const person = findRosterPerson(name);
-    return {
-      timestamp: new Date().toISOString(),
-      date: opts.eventDate || todayString(),
-      name,
-      house: person && person.house ? person.house : "Unknown",
-      activity: opts.eventTitle || "AHD / conference attendance",
-      points: Number(opts.points || 1) || 1,
-      category: "Attendance",
-      questType: "attendance",
-      people: "",
-      note: person ? "Uploaded attendance" : "Uploaded attendance - house not found in roster",
-      photoName: "",
-      photoStatus: "not_required",
-      source: "chief_ahd_upload",
-      uploadedBy,
-      status: "approved",
-      reviewedBy: uploadedBy,
-      reviewedAt: new Date().toISOString(),
-      reviewNote: "",
-      submissionId: makeSubmissionId(),
-    };
-  });
+function getHouseIcon(houseName) {
+  return HOUSES.find((h) => h.name === houseName)?.icon || "🏆";
 }
 
-function chiefBonusToRow(options) {
-  const opts = options || {};
-  const uploadedBy = opts.uploadedBy || "Unknown chief";
-  return {
-    timestamp: new Date().toISOString(),
-    date: opts.eventDate || todayString(),
-    name: (opts.house || "Unknown") + " house",
-    house: opts.house || "Unknown",
-    activity: opts.eventTitle || "Kahoot / trivia bonus",
-    points: Number(opts.points || 0) || 0,
-    category: "Chief Bonus",
-    questType: "chief_bonus",
-    people: "",
-    note: opts.note || "Chief-scored bonus points",
-    photoName: "",
-    photoStatus: "not_required",
-    source: "chief_bonus",
-    uploadedBy,
-    status: "approved",
-    reviewedBy: uploadedBy,
-    reviewedAt: new Date().toISOString(),
-    reviewNote: "",
-    submissionId: makeSubmissionId(),
+function toCsv(rows) {
+  const headers = [
+    "timestamp",
+    "name",
+    "house",
+    "quest",
+    "points",
+    "status",
+    "people",
+    "note",
+    "photoUrl",
+  ];
+
+  const escapeCell = (value) => {
+    const s = String(value ?? "");
+    if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
   };
+
+  return [
+    headers.join(","),
+    ...rows.map((row) => headers.map((h) => escapeCell(row[h])).join(",")),
+  ].join("\n");
 }
 
-function makeSubmissionId() {
-  return String(Date.now()) + "-" + Math.random().toString(36).slice(2);
-}
-
-function csvEscape(value) {
-  const text = String(value === null || value === undefined ? "" : value);
-  if (text.includes(",") || text.includes("\n") || text.includes('"')) return '"' + text.replace(/"/g, '""') + '"';
-  return text;
-}
-
-function downloadCSV(rows) {
-  const headers = ["timestamp", "date", "name", "house", "activity", "points", "category", "questType", "people", "note", "photoName", "photoUrl", "photoStatus", "source", "uploadedBy", "status", "reviewedBy", "reviewedAt", "reviewNote", "submissionId"];
-  const lines = [headers.join(",")];
-  (Array.isArray(rows) ? rows : []).forEach((row) => {
-    lines.push(headers.map((header) => csvEscape(row ? row[header] : "")).join(","));
-  });
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+function downloadTextFile(filename, text) {
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "house-cup-points.csv";
-  link.click();
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
   URL.revokeObjectURL(url);
 }
 
-function fileToBase64(file) {
+function jsonp(url, timeoutMs = 12000) {
   return new Promise((resolve, reject) => {
-    if (!file) { resolve(""); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result || "");
-      const commaIndex = result.indexOf(",");
-      resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
-    };
-    reader.onerror = () => reject(reader.error || new Error("Could not read file"));
-    reader.readAsDataURL(file);
-  });
-}
-
-async function submitToAppsScript(row, photoFile) {
-  if (!APPS_SCRIPT_WEB_APP_URL) throw new Error("Missing Apps Script URL");
-  const payload = { ...row };
-  if (photoFile) {
-    payload.photoBase64 = await fileToBase64(photoFile);
-    payload.photoName = photoFile.name || row.photoName || "house-cup-photo.jpg";
-    payload.photoMimeType = photoFile.type || "image/jpeg";
-  }
-  await fetch(APPS_SCRIPT_WEB_APP_URL, {
-    method: "POST",
-    mode: "no-cors",
-    cache: "no-store",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload),
-  });
-  return { ok: true, sentTo: APPS_SCRIPT_WEB_APP_URL };
-}
-
-async function submitRowsToAppsScript(rows) {
-  const safeRows = Array.isArray(rows) ? rows : [];
-  for (let i = 0; i < safeRows.length; i += 1) {
-    await submitToAppsScript(safeRows[i], null);
-  }
-  return { ok: true, count: safeRows.length };
-}
-
-async function postAdminAction(action, payload) {
-  return submitToAppsScript({
-    timestamp: new Date().toISOString(),
-    date: todayString(),
-    source: "chief_admin",
-    adminAction: action,
-    payload: payload || {},
-    status: "approved",
-    submissionId: makeSubmissionId(),
-  }, null);
-}
-
-function readBackendJsonp(params) {
-  return new Promise((resolve, reject) => {
-    const callbackName = "houseCupJsonp_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const callbackName = "houseCupJsonp_" + Math.random().toString(36).slice(2);
     const script = document.createElement("script");
-    const timeout = window.setTimeout(() => {
-      cleanup();
-      reject(new Error("Backend request timed out."));
-    }, 15000);
+    const cleanup = () => {
+      delete window[callbackName];
+      script.remove();
+    };
 
-    function cleanup() {
-      window.clearTimeout(timeout);
-      if (script.parentNode) script.parentNode.removeChild(script);
-      try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
-    }
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Could not load Apps Script JSONP endpoint."));
+    }, timeoutMs);
 
     window[callbackName] = (data) => {
+      window.clearTimeout(timer);
       cleanup();
-      if (!data || data.ok !== true) {
-        reject(new Error("Backend endpoint returned an error."));
-        return;
-      }
       resolve(data);
     };
 
+    const separator = url.includes("?") ? "&" : "?";
+    script.src = `${url}${separator}callback=${callbackName}`;
     script.onerror = () => {
+      window.clearTimeout(timer);
       cleanup();
       reject(new Error("Could not load Apps Script backend."));
     };
 
-    const query = new URLSearchParams({ ...(params || {}), callback: callbackName, cacheBust: String(Date.now()) });
-    script.src = APPS_SCRIPT_WEB_APP_URL + "?" + query.toString();
     document.body.appendChild(script);
   });
 }
 
-function readSubmissionsJsonp() {
+function dataUrlFromFile(file) {
   return new Promise((resolve, reject) => {
-    const callbackName = "houseCupJsonp_" + Date.now() + "_" + Math.random().toString(36).slice(2);
-    const script = document.createElement("script");
-    const timeout = window.setTimeout(() => {
-      cleanup();
-      reject(new Error("Sheet sync timed out."));
-    }, 15000);
-
-    function cleanup() {
-      window.clearTimeout(timeout);
-      if (script.parentNode) script.parentNode.removeChild(script);
-      try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
-    }
-
-    window[callbackName] = (data) => {
-      cleanup();
-      console.log("House Cup Sheet sync payload", data);
-      if (!data || data.ok !== true || !Array.isArray(data.submissions)) {
-        reject(new Error("Sheet endpoint did not return submissions."));
-        return;
-      }
-      resolve(data.submissions);
-    };
-
-    script.onerror = () => {
-      cleanup();
-      reject(new Error("Could not load Apps Script JSONP endpoint."));
-    };
-
-    script.src = APPS_SCRIPT_WEB_APP_URL + "?action=submissions&callback=" + encodeURIComponent(callbackName) + "&cacheBust=" + Date.now();
-    document.body.appendChild(script);
+    if (!file) return resolve(null);
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Could not read photo."));
+    reader.readAsDataURL(file);
   });
 }
 
-async function readSubmissionsFromAppsScript() {
-  const submissions = await readSubmissionsJsonp();
-  return submissions.map((row, index) => ({
-    timestamp: row.timestamp || new Date().toISOString(),
-    date: row.date || "",
-    name: row.name || "",
-    house: row.house || "Unknown",
-    activity: row.activity || "",
-    points: Number(row.points || 0),
-    category: row.category || "",
-    questType: row.questType || "",
-    people: row.people || "",
-    note: row.note || "",
-    photoName: row.photoName || "",
-    photoUrl: row.photoUrl || "",
-    photoStatus: row.photoStatus || "",
-    source: row.source || "sheet",
-    uploadedBy: row.uploadedBy || "",
-    status: row.status || "approved",
-    reviewedBy: row.reviewedBy || "",
-    reviewedAt: row.reviewedAt || "",
-    reviewNote: row.reviewNote || "",
-    submissionId: row.submissionId || "sheet-" + index + "-" + Date.now(),
-  }));
-}
+async function submitToAppsScript(payload) {
+  if (!APPS_SCRIPT_WEB_APP_URL || APPS_SCRIPT_WEB_APP_URL.includes("PASTE_")) {
+    throw new Error("Apps Script URL is missing.");
+  }
 
-async function readTeamFromAppsScript() {
-  const data = await readBackendJsonp({ action: "team" });
-  const team = Array.isArray(data.team) ? data.team : [];
-  return team.map((person) => ({
-    name: person.name || "",
-    house: person.house || "",
-    role: person.role || "Resident",
-  })).filter((person) => person.name && person.house);
-}
-
-async function readSettingsFromAppsScript() {
-  const data = await readBackendJsonp({ action: "settings" });
-  return data.settings || {};
-}
-
-async function readQuestIdeasFromAppsScript() {
-  const data = await readBackendJsonp({ action: "quests" });
-  return Array.isArray(data.quests) ? data.quests : [];
-}
-
-function getLeaderboardRankLabel(index) {
-  if (index === 0) return "🥇 Current House Champions";
-  if (index === 1) return "🥈 Respectable Menace";
-  if (index === 2) return "🥉 Strong Showing";
-  if (index === 3) return "🙂 Still in the Mix";
-  return "💪 Comeback Season";
-}
-
-function getLeaderboardTrashTalk(index) {
-  if (index === 0) return "Please use power responsibly.";
-  if (index === 1) return "Dangerously close to glory.";
-  if (index === 2) return "Podium adjacent. Hydrate.";
-  if (index === 3) return "Still mathematically alive.";
-  return "One good week changes everything.";
-}
-
-function getAchievementBadges(rows) {
-  const safeRows = Array.isArray(rows) ? rows : [];
-  const badges = [];
-  if (safeRows.length > 0) badges.push({ label: "First blood", detail: "First logged points are on the board." });
-  if (safeRows.some((row) => /grass|nature|walk|outside|sunrise|sunset|sabino|tumamoc|mountain|summit|loop/i.test(row.activity + " " + row.note))) badges.push({ label: "Grass toucher", detail: "Someone successfully went outside." });
-  if (safeRows.some((row) => /AHD|conference/i.test(row.activity))) badges.push({ label: "Conference attendee", detail: "Showing up counts." });
-  if (safeRows.some((row) => /group activity|house hang|dinner|trivia|coffee/i.test(row.activity + " " + row.note))) badges.push({ label: "Group activity menace", detail: "Social wellness has entered the chat." });
-  if (safeRows.some((row) => /summit|peak|lemmon|wrightson|mica|wasson|mountain/i.test(row.activity + " " + row.note))) badges.push({ label: "Summit sicko", detail: "Altitude-based personality development." });
-  if (safeRows.some((row) => /wellness|meditation|sleep|gratitude|mental|reset|yoga|community|shubitz|blood|platelet|friend|service/i.test(row.activity + " " + row.note))) badges.push({ label: "Wellness? In this economy?", detail: "A brave and controversial choice." });
-  if (safeRows.some((row) => row.source === "resident_point_pitch" && row.status === "approved")) badges.push({ label: "Chief-approved nonsense", detail: "Questionable, but sanctioned." });
-  return badges;
-}
-
-function getRecentSubmissions(rows) {
-  return (Array.isArray(rows) ? rows : []).slice(0, 6).map((row) => {
-    const pending = row.status === "pending_review";
-    const emoji = pending ? "🤔" : row.source === "chief_bonus" ? "🏆" : /sonoran|taco|burrito/i.test(row.activity + " " + row.note) ? "🌭" : /summit|mountain|peak|lemmon|wrightson|mica|wasson/i.test(row.activity + " " + row.note) ? "🏔️" : /community|shubitz|blood|platelet|friend|service/i.test(row.activity + " " + row.note) ? "❤️" : "✨";
-    return { text: row.name + " submitted “" + row.activity + "” for " + row.house + ". +" + row.points + (pending ? " — pending review." : "."), emoji };
+  await fetch(APPS_SCRIPT_WEB_APP_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
   });
-}
 
-function FieldLabel(props) { return <label className="hc-label">{props.children}</label>; }
-function TextInput(props) { return <input {...props} className={(props.className || "") + " hc-input"} />; }
-function SelectInput(props) { return <select value={props.value} onChange={props.onChange} className="hc-input">{props.children}</select>; }
-function TabButton(props) { return <button type="button" onClick={props.onClick} className={"hc-tab " + (props.active ? "active" : "")}>{props.children}</button>; }
+  return { ok: true };
+}
 
 function HouseCupStyles() {
   return (
     <style>{`
-      .hc-page { min-height: 100vh; cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%230a7a3d' stroke='%23000000' stroke-width='2' d='M15 29V9a4 4 0 0 1 8 0v5h3a3 3 0 0 1 3 3v4h-5v-4h-1v12h-8zM15 16h-3v-4H9v7h6v5H8a4 4 0 0 1-4-4v-8a4 4 0 0 1 8 0v1h3z'/%3E%3C/svg%3E") 2 2, auto; padding: 14px; color: #24130d; background-color: #fff7b8; background-image: radial-gradient(circle at 12px 12px, rgba(0,128,96,.28) 0 3px, transparent 4px), radial-gradient(circle at 34px 34px, rgba(0,128,96,.22) 0 2px, transparent 3px), linear-gradient(135deg, rgba(255,255,255,.62), rgba(255,214,231,.52), rgba(217,247,255,.58)); background-size: 46px 46px, 46px 46px, auto; font-family: Verdana, Geneva, Tahoma, sans-serif; }
-      .hc-shell { max-width: 1120px; margin: 0 auto; }
-      .hc-hero { border: 4px solid #000; padding: 16px; background: linear-gradient(to bottom, #ffffff 0%, #fffef0 100%); box-shadow: 7px 7px 0 #000; text-align: center; }
-      .hc-kicker { display: inline-block; padding: 7px 12px; border: 3px solid #000; background: #ffff66; color: #000; font-weight: 1000; text-transform: uppercase; box-shadow: 3px 3px 0 #000; }
-      .hc-title { margin: 14px 0 8px; font-size: clamp(42px, 8vw, 86px); line-height: .9; font-weight: 1000; letter-spacing: -2px; text-transform: uppercase; color: #d4006a; text-shadow: 2px 2px 0 #fff, 4px 4px 0 #000; }
-      .hc-marquee-wrap { margin-top: 14px; border: 3px solid #000; background: #000; overflow: hidden; }
-      .hc-marquee { display: inline-block; white-space: nowrap; color: #00ff66; font-family: "Courier New", monospace; font-size: 14px; font-weight: 900; padding: 7px 0; animation: hc-scroll 18s linear infinite; }
-      @keyframes hc-scroll { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-      .hc-counterbar { margin-top: 10px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-      .hc-counter, .hc-underconstruction, .hc-webmaster { border: 2px solid #000; background: #fff; padding: 6px 10px; font-family: "Courier New", monospace; font-size: 12px; font-weight: 1000; box-shadow: 3px 3px 0 #000; }
-      .hc-underconstruction { background: repeating-linear-gradient(45deg, #ffeb3b, #ffeb3b 10px, #000 10px, #000 20px); color: #fff; text-shadow: 1px 1px 0 #000; }
-      .hc-webmaster { color: #0000ee; text-decoration: underline; cursor: pointer; }
-      .hc-tabs { position: sticky; top: 0; z-index: 10; margin-top: 14px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 6px 0; background: rgba(255,247,184,.88); backdrop-filter: blur(4px); }
-      .hc-tab { border-top: 3px solid #fff; border-left: 3px solid #fff; border-right: 3px solid #000; border-bottom: 3px solid #000; padding: 10px 8px; background: linear-gradient(to bottom, #fefefe, #d9d9d9); color: #111827; font-weight: 1000; cursor: pointer; text-transform: uppercase; }
-      .hc-tab.active { background: linear-gradient(to bottom, #ff8ad8, #ff4db3); color: #fff; text-shadow: 1px 1px 0 #000; }
-      .hc-card, .hc-footer { margin-top: 16px; border: 4px solid #000; padding: 14px; background: rgba(255,255,255,.95); box-shadow: 5px 5px 0 #000; }
-      .hc-footer { border-style: dotted; font-size: 13px; color: #334155; font-weight: 700; }
-      .hc-grid { display: grid; gap: 12px; }
-      .hc-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .hc-grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-      .hc-label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 1000; color: #000080; text-transform: uppercase; }
-      .hc-input { width: 100%; box-sizing: border-box; border-top: 3px solid #777; border-left: 3px solid #777; border-right: 3px solid #fff; border-bottom: 3px solid #fff; padding: 10px 12px; background: #fff; color: #111827; font: inherit; outline: none; }
-      .hc-input:focus { background: #fffde7; }
-      .hc-muted { color: #5b6470; font-size: 12px; font-weight: 700; }
-      .hc-alert { margin-top: 14px; padding: 12px; border: 3px dashed #0033cc; background: #dbeafe; color: #002b7f; font-weight: 900; }
-      .hc-success { margin-top: 14px; border: 3px solid #14532d; padding: 12px; background: #dcfce7; color: #14532d; font-weight: 900; }
-      .hc-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
-      .hc-action { min-height: 154px; border: 4px solid #000; padding: 16px; text-align: left; cursor: pointer; box-shadow: 6px 6px 0 #000; transition: transform .06s ease, box-shadow .06s ease; position: relative; overflow: hidden; }
-      .hc-action:hover { transform: translate(2px, 2px); box-shadow: 4px 4px 0 #000; }
-      .hc-action:disabled { opacity: .5; cursor: not-allowed; }
-      .hc-action-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-      .hc-icon { font-size: 38px; line-height: 1; }
-      .hc-badge { display: inline-block; padding: 5px 10px; border: 2px solid #000; background: #000; color: #00ff66; font-family: "Courier New", monospace; font-weight: 1000; }
-      .hc-action-title { margin-top: 14px; font-size: 22px; font-weight: 1000; text-transform: uppercase; color: #111; }
-      .hc-action-desc { margin-top: 6px; font-size: 13px; color: #334155; font-weight: 700; min-height: 18px; }
-      .hc-quest-card { margin-top: 12px; border: 3px dashed #000; padding: 12px; background: #fff7b8; font-weight: 900; }
-      .hc-button { border-top: 3px solid #fff; border-left: 3px solid #fff; border-right: 3px solid #000; border-bottom: 3px solid #000; padding: 10px 14px; background: linear-gradient(to bottom, #fffbcc, #ffd54f); color: #000; font-weight: 1000; cursor: pointer; text-transform: uppercase; }
-      .hc-button.secondary { background: linear-gradient(to bottom, #fff, #d9d9d9); color: #111827; }
-      .hc-button.danger { background: linear-gradient(to bottom, #ffd6d6, #ff9b9b); color: #7f0000; }
-      .hc-button:disabled { opacity: .45; cursor: not-allowed; }
-      .hc-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-      .hc-photo-preview { margin-top: 8px; max-height: 90px; border: 2px solid #000; object-fit: cover; }
-      .hc-leader { border: 4px solid #000; padding: 18px; text-align: center; background: linear-gradient(to bottom, #fff, #f8fafc); box-shadow: 5px 5px 0 #000; }
-      .hc-rank { color: #000080; font-weight: 1000; }
-      .hc-house { margin-top: 6px; font-size: 22px; font-weight: 1000; text-transform: uppercase; }
-      .hc-score { margin-top: 12px; font-size: 54px; font-weight: 1000; color: #c2185b; text-shadow: 2px 2px 0 #00000022; }
-      .hc-trash { margin-top: 8px; color: #475569; font-size: 12px; font-weight: 900; }
-      .hc-badge-wall, .hc-months { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
-      .hc-achievement, .hc-month, .hc-feed-item { border: 2px solid #000; background: #fff; padding: 10px; font-size: 12px; box-shadow: 2px 2px 0 #000; font-weight: 800; }
-      .hc-achievement { border-width: 3px; background: #fef08a; font-weight: 1000; }
-      .hc-achievement small { display: block; margin-top: 5px; color: #475569; font-weight: 800; }
-      .hc-feed { margin-top: 12px; display: grid; gap: 8px; }
-      .hc-table-wrap { max-height: 380px; overflow: auto; border: 3px solid #000; background: #fff; }
-      .hc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      .hc-table th { position: sticky; top: 0; background: #ffeb3b; border-bottom: 2px solid #000; padding: 10px; text-align: left; text-transform: uppercase; }
-      .hc-table td { border-top: 1px solid #cbd5e1; padding: 10px; }
-      .hc-login { max-width: 440px; margin: 18px auto 0; }
-      .hc-blink { animation: hc-blink 1s step-start infinite; }
-      @keyframes hc-blink { 50% { opacity: 0; } }
-      @media (max-width: 860px) { .hc-grid-4, .hc-grid-5, .hc-actions, .hc-tabs, .hc-badge-wall, .hc-months { grid-template-columns: 1fr 1fr; } }
-      @media (max-width: 560px) {
-        .hc-page { padding: 8px; cursor: auto; }
-        .hc-hero { padding: 10px; box-shadow: 4px 4px 0 #000; }
-        .hc-kicker { font-size: 11px; padding: 5px 8px; }
-        .hc-title { font-size: 40px; letter-spacing: -1px; text-shadow: 1px 1px 0 #fff, 3px 3px 0 #000; }
-        .hc-marquee { font-size: 12px; }
-        .hc-tabs { grid-template-columns: 1fr 1fr; gap: 6px; }
-        .hc-tab { font-size: 11px; padding: 10px 5px; }
-        .hc-grid-4, .hc-grid-5, .hc-actions, .hc-badge-wall, .hc-months { grid-template-columns: 1fr; }
-        .hc-card, .hc-footer { padding: 12px; box-shadow: 3px 3px 0 #000; }
-        .hc-action { min-height: 132px; padding: 14px; box-shadow: 4px 4px 0 #000; }
-        .hc-action-title { font-size: 19px; }
-        .hc-score { font-size: 44px; }
+      :root {
+        --hc-bg: #fff3bf;
+        --hc-card: #fffdf2;
+        --hc-ink: #111111;
+        --hc-hot: #ff4d6d;
+        --hc-blue: #4dabf7;
+        --hc-green: #69db7c;
+        --hc-yellow: #ffe066;
+        --hc-shadow: 5px 5px 0 #000;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 12px 12px, rgba(0,0,0,.10) 2px, transparent 2px),
+          linear-gradient(135deg, #fff3bf, #ffc9c9 45%, #b2f2bb);
+        background-size: 26px 26px, auto;
+        color: var(--hc-ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button, input, textarea, select {
+        font: inherit;
+      }
+
+      .hc-page {
+        min-height: 100vh;
+        padding: 18px;
+        padding-bottom: 130px;
+      }
+
+      .hc-shell {
+        max-width: 1120px;
+        margin: 0 auto;
+      }
+
+      .hc-hero {
+        border: 4px solid #000;
+        background: rgba(255,255,255,.82);
+        box-shadow: var(--hc-shadow);
+        padding: 18px;
+        border-radius: 18px;
+      }
+
+      .hc-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 3px solid #000;
+        background: #fff;
+        box-shadow: 3px 3px 0 #000;
+        padding: 6px 10px;
+        font-weight: 1000;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+      }
+
+      .hc-title {
+        margin: 12px 0 4px;
+        font-family: Impact, Haettenschweiler, "Arial Black", sans-serif;
+        font-size: clamp(48px, 9vw, 96px);
+        line-height: .88;
+        letter-spacing: -2px;
+        text-transform: uppercase;
+        text-shadow: 2px 2px 0 #fff, 6px 6px 0 #000;
+      }
+
+      .hc-subtitle {
+        margin: 12px 0 0;
+        font-size: 15px;
+        font-weight: 800;
+        max-width: 780px;
+      }
+
+      .hc-tabs {
+        position: sticky;
+        top: 10px;
+        z-index: 20;
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+
+      .hc-tab {
+        min-height: 48px;
+        border: 3px solid #000;
+        background: #fff;
+        box-shadow: 4px 4px 0 #000;
+        border-radius: 12px;
+        font-weight: 1000;
+        cursor: pointer;
+      }
+
+      .hc-tab.active {
+        background: var(--hc-yellow);
+        transform: translate(2px, 2px);
+        box-shadow: 2px 2px 0 #000;
+      }
+
+      .hc-card {
+        margin-top: 16px;
+        border: 4px solid #000;
+        background: var(--hc-card);
+        box-shadow: var(--hc-shadow);
+        border-radius: 18px;
+        padding: 18px;
+      }
+
+      .hc-card h2, .hc-card h3 {
+        margin-top: 0;
+      }
+
+      .hc-label {
+        display: block;
+        margin: 14px 0 6px;
+        font-weight: 1000;
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: .04em;
+      }
+
+      .hc-input {
+        width: 100%;
+        border: 3px solid #000;
+        background: #fff;
+        border-radius: 12px;
+        padding: 12px 13px;
+        box-shadow: 3px 3px 0 #000;
+        outline: none;
+      }
+
+      .hc-input:focus {
+        background: #fffbe6;
+        box-shadow: 2px 2px 0 #000;
+        transform: translate(1px, 1px);
+      }
+
+      .hc-big-input {
+        min-height: 54px;
+        font-size: 18px;
+      }
+
+      .hc-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .hc-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .hc-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .hc-button {
+        border: 3px solid #000;
+        background: var(--hc-yellow);
+        box-shadow: 4px 4px 0 #000;
+        border-radius: 12px;
+        padding: 11px 14px;
+        font-weight: 1000;
+        cursor: pointer;
+      }
+
+      .hc-button:hover:not(:disabled) {
+        transform: translate(1px, 1px);
+        box-shadow: 3px 3px 0 #000;
+      }
+
+      .hc-button:disabled {
+        opacity: .55;
+        cursor: not-allowed;
+      }
+
+      .hc-button.secondary {
+        background: #fff;
+      }
+
+      .hc-button.danger {
+        background: #ffc9c9;
+      }
+
+      .hc-muted {
+        color: #4a4a4a;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .hc-status {
+        margin-top: 12px;
+        border: 3px solid #000;
+        background: #e7f5ff;
+        box-shadow: 3px 3px 0 #000;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 900;
+      }
+
+      .hc-status.error {
+        background: #ffe3e3;
+      }
+
+      .hc-status.good {
+        background: #d3f9d8;
+      }
+
+      .hc-submit-card {
+        position: relative;
+        overflow: visible;
+      }
+
+      .hc-mobile-submit-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .hc-mobile-submit-header h2 {
+        margin: 8px 0 0;
+        font-family: Impact, Haettenschweiler, "Arial Black", sans-serif;
+        font-size: 42px;
+        line-height: .9;
+        text-transform: uppercase;
+      }
+
+      .hc-submit-pill {
+        border: 3px solid #000;
+        background: #fff7b8;
+        box-shadow: 3px 3px 0 #000;
+        border-radius: 999px;
+        padding: 8px 10px;
+        font-weight: 1000;
+        font-size: 12px;
+        text-transform: uppercase;
+        max-width: 150px;
+        text-align: center;
+      }
+
+      .hc-house-confirm {
+        border: 3px solid #000;
+        background: #d3f9d8;
+        box-shadow: 3px 3px 0 #000;
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin: 10px 0 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-weight: 900;
+      }
+
+      .hc-house-confirm button {
+        border: 2px solid #000;
+        background: #fff;
+        border-radius: 999px;
+        font-weight: 1000;
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+
+      .hc-section-title {
+        margin: 20px 0 10px;
+        font-weight: 1000;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+      }
+
+      .hc-quick-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .hc-quick-action {
+        border: 3px solid #000;
+        background: #fff;
+        box-shadow: 4px 4px 0 #000;
+        border-radius: 16px;
+        padding: 13px 9px;
+        min-height: 118px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 7px;
+        text-align: center;
+      }
+
+      .hc-quick-action span {
+        font-size: 31px;
+        line-height: 1;
+      }
+
+      .hc-quick-action b {
+        font-size: 14px;
+        line-height: 1.05;
+      }
+
+      .hc-quick-action small {
+        font-size: 11px;
+        font-weight: 1000;
+        opacity: .72;
+      }
+
+      .hc-quick-action.selected {
+        background: var(--hc-yellow);
+        transform: translate(2px, 2px);
+        box-shadow: 2px 2px 0 #000;
+      }
+
+      .hc-mobile-details {
+        margin-top: 16px;
+        border: 3px solid #000;
+        background: #fffdf0;
+        box-shadow: 3px 3px 0 #000;
+        border-radius: 14px;
+        padding: 11px;
+      }
+
+      .hc-mobile-details summary {
+        cursor: pointer;
+        font-weight: 1000;
+        text-transform: uppercase;
+      }
+
+      .hc-photo-upload {
+        margin-top: 12px;
+        border: 3px dashed #000;
+        background: #fff;
+        border-radius: 14px;
+        padding: 16px;
+        display: block;
+        text-align: center;
+        font-weight: 1000;
+        cursor: pointer;
+      }
+
+      .hc-photo-upload input {
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+      }
+
+      .hc-photo-preview {
+        display: block;
+        max-width: 280px;
+        max-height: 220px;
+        border: 3px solid #000;
+        border-radius: 14px;
+        margin-top: 12px;
+        object-fit: cover;
+        box-shadow: 3px 3px 0 #000;
+      }
+
+      .hc-mobile-submit-spacer {
+        display: none;
+      }
+
+      .hc-mobile-submit-bar {
+        margin-top: 18px;
+        border: 3px solid #000;
+        background: #fff7b8;
+        box-shadow: 4px 4px 0 #000;
+        border-radius: 16px;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .hc-mobile-submit-bar small {
+        display: block;
+        font-size: 11px;
+        font-weight: 900;
+        opacity: .75;
+      }
+
+      .hc-submit-now {
+        min-width: 145px;
+      }
+
+      .hc-leader {
+        border: 3px solid #000;
+        background: #fff;
+        box-shadow: 4px 4px 0 #000;
+        border-radius: 16px;
+        padding: 15px;
+      }
+
+      .hc-house {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-weight: 1000;
+        font-size: 20px;
+      }
+
+      .hc-score {
+        margin-top: 8px;
+        font-family: Impact, Haettenschweiler, "Arial Black", sans-serif;
+        font-size: 54px;
+        line-height: .9;
+      }
+
+      .hc-table-wrap {
+        margin-top: 12px;
+        overflow: auto;
+        border: 3px solid #000;
+        border-radius: 14px;
+        background: #fff;
+      }
+
+      .hc-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      .hc-table th,
+      .hc-table td {
+        border-bottom: 2px solid #000;
+        padding: 9px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .hc-table th {
+        background: #ffe066;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+
+      .hc-login {
+        max-width: 420px;
+      }
+
+      @media (max-width: 720px) {
+        .hc-page {
+          padding: 8px;
+          padding-bottom: 178px;
+        }
+
+        .hc-hero {
+          padding: 12px;
+          border-radius: 14px;
+          box-shadow: 4px 4px 0 #000;
+        }
+
+        .hc-title {
+          font-size: 43px;
+          letter-spacing: -1px;
+          text-shadow: 1px 1px 0 #fff, 3px 3px 0 #000;
+        }
+
+        .hc-subtitle {
+          font-size: 13px;
+        }
+
+        .hc-tabs {
+          position: fixed;
+          left: 8px;
+          right: 8px;
+          bottom: 8px;
+          top: auto;
+          z-index: 80;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 5px;
+          margin: 0;
+          padding: 7px;
+          border: 3px solid #000;
+          border-radius: 16px;
+          background: rgba(255, 247, 184, .97);
+          box-shadow: 4px 4px 0 #000;
+        }
+
+        .hc-tab {
+          min-height: 50px;
+          font-size: 10px;
+          padding: 6px 4px;
+          border-radius: 10px;
+        }
+
+        .hc-card {
+          margin-top: 12px;
+          padding: 12px;
+          border-radius: 15px;
+          box-shadow: 3px 3px 0 #000;
+        }
+
+        .hc-grid,
+        .hc-grid-3 {
+          grid-template-columns: 1fr;
+        }
+
+        .hc-mobile-submit-header {
+          align-items: center;
+        }
+
+        .hc-mobile-submit-header h2 {
+          font-size: 34px;
+        }
+
+        .hc-submit-pill {
+          font-size: 10px;
+          max-width: 108px;
+          padding: 7px 8px;
+        }
+
+        .hc-label {
+          margin-top: 12px;
+        }
+
+        .hc-input,
+        .hc-button,
+        .hc-tab,
+        .hc-quick-action {
+          font-size: 16px;
+        }
+
+        .hc-big-input {
+          min-height: 58px;
+          font-size: 18px;
+          border-width: 3px;
+        }
+
+        .hc-quick-actions {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 9px;
+        }
+
+        .hc-quick-action {
+          min-height: 112px;
+          padding: 12px 8px;
+          box-shadow: 3px 3px 0 #000;
+        }
+
+        .hc-quick-action span {
+          font-size: 31px;
+        }
+
+        .hc-quick-action b {
+          font-size: 13px;
+        }
+
+        .hc-mobile-details {
+          margin-top: 14px;
+        }
+
+        .hc-mobile-submit-spacer {
+          display: block;
+          height: 88px;
+        }
+
+        .hc-mobile-submit-bar {
+          position: fixed;
+          left: 8px;
+          right: 8px;
+          bottom: 78px;
+          z-index: 70;
+          margin-top: 0;
+          padding: 9px;
+          border-radius: 15px;
+          box-shadow: 4px 4px 0 #000;
+        }
+
+        .hc-submit-now {
+          min-width: 126px;
+          min-height: 50px;
+          font-size: 16px;
+        }
+
+        .hc-photo-upload {
+          padding: 14px 10px;
+        }
+
+        .hc-photo-preview {
+          max-width: 100%;
+          max-height: 170px;
+        }
+
+        .hc-row {
+          display: grid;
+          grid-template-columns: 1fr;
+          align-items: stretch;
+        }
+
+        .hc-button {
+          width: 100%;
+          min-height: 48px;
+        }
+
+        .hc-table {
+          min-width: 760px;
+          font-size: 12px;
+        }
+
+        .hc-score {
+          font-size: 44px;
+        }
       }
     `}</style>
   );
 }
 
-function runSelfTests() {
-  console.assert(QUEST_OPTIONS.some((option) => option.label === "Post-call burrito (or equivalent morale meal)"), "Burrito morale meal option should exist");
-  console.assert(!QUEST_OPTIONS.some((option) => /San Xavier/i.test(option.label)), "San Xavier should not be in the quest dropdown");
-  console.assert(!QUEST_OPTIONS.some((option) => option.label === "A Mountain summit"), "A Mountain summit should not be in the quest dropdown");
-  console.assert(splitAttendanceNames("A, B\nC").length === 3, "Attendance splitting should handle comma and newline input");
-  console.assert(findRosterPerson("Nate Walton")?.house === "Catalina", "Known roster person should resolve to house");
-  console.assert(authenticateChief("Nate", "wootwoot1!")?.house === "Catalina", "Chief login should authenticate known chief");
-  console.assert(findRosterPerson("Eric Brucks")?.role === "PD_APD", "Eric Brucks should be listed as PD/APD");
-  console.assert(canChiefApprovePitch("Rosie", { house: "Catalina" }) === true, "Different-house chief should approve pitch");
-  console.assert(canChiefApprovePitch("Nate", { house: "Catalina" }) === false, "Same-house chief should not approve pitch");
-}
-runSelfTests();
-
-export default function HouseCupPointLogger() {
-  const [activeTab, setActiveTab] = useState("log");
-  const [name, setName] = useState("");
+function ResidentZone({
+  fullRoster,
+  addLocalRow,
+  refreshSubmissions,
+}) {
+  const [submitter, setSubmitter] = useState("");
   const [house, setHouse] = useState("");
+  const [manualHouse, setManualHouse] = useState(false);
+  const [questKey, setQuestKey] = useState("");
+  const [points, setPoints] = useState("");
   const [people, setPeople] = useState("");
   const [note, setNote] = useState("");
-  const [photoName, setPhotoName] = useState("");
-  const [photoPreview, setPhotoPreview] = useState("");
   const [photoFile, setPhotoFile] = useState(null);
-  const [submitStatus, setSubmitStatus] = useState("");
-  const [questLabel, setQuestLabel] = useState(QUEST_OPTIONS[0].label);
-  const [currentFeaturedQuest, setCurrentFeaturedQuest] = useState(() => getStoredValue(STORAGE_KEYS.featuredQuest, FEATURED_QUEST_IDEAS[0]));
-  const [currentFeaturedNote, setCurrentFeaturedNote] = useState(() => getStoredValue(STORAGE_KEYS.featuredNote, "Photo evidence encouraged. Keep it easy, funny, and wholesome."));
-  const [currentMonthlyWellnessMonth, setCurrentMonthlyWellnessMonth] = useState(() => getStoredValue(STORAGE_KEYS.monthlyWellnessMonth, getCurrentMonthlyWellnessQuest().month));
-  const [currentPhotoChallenge, setCurrentPhotoChallenge] = useState(() => getStoredValue(STORAGE_KEYS.photoChallenge, getCurrentMonthlyWellnessQuest().photo));
-  const [featuredSuggestion, setFeaturedSuggestion] = useState(() => getStoredValue(STORAGE_KEYS.featuredQuest, FEATURED_QUEST_IDEAS[0]));
-  const [pointPitchAmount, setPointPitchAmount] = useState(1);
-  const [rows, setRows] = useState(() => getStoredRows());
-  const [lastSaved, setLastSaved] = useState(null);
-  const [sheetStatus, setSheetStatus] = useState("Local backup loaded. Click Refresh Google Sheet for shared leaderboard.");
-  const [settingsStatus, setSettingsStatus] = useState("Chief settings/team sheet not loaded yet.");
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [status, setStatus] = useState("");
+  const [statusKind, setStatusKind] = useState("");
 
-  const [chiefName, setChiefName] = useState("");
-  const [chiefPassword, setChiefPassword] = useState("");
-  const [chiefAuthed, setChiefAuthed] = useState(false);
-  const [currentChief, setCurrentChief] = useState("");
-  const [chiefMessage, setChiefMessage] = useState("");
-  const [attendanceText, setAttendanceText] = useState("");
-  const [attendanceTitle, setAttendanceTitle] = useState("AHD / conference attendance");
-  const [attendanceDate, setAttendanceDate] = useState(todayString());
-  const [attendancePoints, setAttendancePoints] = useState(1);
-  const [uploadMessage, setUploadMessage] = useState("");
-  const [bonusHouse, setBonusHouse] = useState("");
-  const [bonusTitle, setBonusTitle] = useState("Kahoot / trivia bonus");
-  const [bonusDate, setBonusDate] = useState(todayString());
-  const [bonusPoints, setBonusPoints] = useState(3);
-  const [bonusNote, setBonusNote] = useState("");
-  const [bonusMessage, setBonusMessage] = useState("");
-  const [approvalMessage, setApprovalMessage] = useState("");
-  const [approvalPoints, setApprovalPoints] = useState(1);
-  const [approvalNote, setApprovalNote] = useState("");
-  const [remoteRoster, setRemoteRoster] = useState([]);
-  const [customRoster, setCustomRoster] = useState(() => getStoredCustomRoster());
-  const [newMemberName, setNewMemberName] = useState("");
-  const [newMemberHouse, setNewMemberHouse] = useState("");
-  const [newMemberRole, setNewMemberRole] = useState("Resident");
-  const [newMemberMessage, setNewMemberMessage] = useState("");
-  const [newQuestText, setNewQuestText] = useState("");
-  const [newQuestNote, setNewQuestNote] = useState("");
-  const [newPhotoChallengeText, setNewPhotoChallengeText] = useState("");
+  const selectedQuest = QUESTS.find((q) => q.key === questKey);
 
-  const fullRoster = useMemo(() => dedupeRoster(remoteRoster.concat(ROSTER).concat(customRoster)), [remoteRoster, customRoster]);
-  const rosterMatch = findRosterPersonInList(name, fullRoster);
-  const effectiveHouse = rosterMatch && rosterMatch.house ? rosterMatch.house : house;
-  const canSubmit = Boolean(name.trim() && effectiveHouse);
-  const totals = useMemo(() => calculateHouseTotals(rows), [rows]);
-  const unknownUploads = rows.filter((row) => row && row.house === "Unknown");
-  const pendingPointPitches = getPendingPointPitches(rows);
-  const achievementBadges = getAchievementBadges(rows);
-  const recentSubmissions = getRecentSubmissions(rows);
+  useEffect(() => {
+    const person = findRosterPerson(submitter, fullRoster);
+    if (person?.house && !manualHouse) {
+      setHouse(person.house);
+    }
+  }, [submitter, fullRoster, manualHouse]);
 
-  useEffect(() => { setStoredRows(rows); }, [rows]);
-
-  useEffect(() => { setStoredValue(STORAGE_KEYS.featuredQuest, currentFeaturedQuest); }, [currentFeaturedQuest]);
-  useEffect(() => { setStoredValue(STORAGE_KEYS.featuredNote, currentFeaturedNote); }, [currentFeaturedNote]);
-  useEffect(() => { setStoredValue(STORAGE_KEYS.monthlyWellnessMonth, currentMonthlyWellnessMonth); }, [currentMonthlyWellnessMonth]);
-  useEffect(() => { setStoredValue(STORAGE_KEYS.photoChallenge, currentPhotoChallenge); }, [currentPhotoChallenge]);
-  useEffect(() => { setStoredCustomRoster(customRoster); }, [customRoster]);
-
-  function handlePhotoChange(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) { setPhotoName(""); setPhotoPreview(""); setPhotoFile(null); return; }
-    setPhotoName(file.name);
-    setPhotoPreview(URL.createObjectURL(file));
+  async function handlePhotoChange(event) {
+    const file = event.target.files?.[0] || null;
     setPhotoFile(file);
-  }
-
-  function getQuestSelection() {
-    const option = QUEST_OPTIONS.find((item) => item.label === questLabel) || QUEST_OPTIONS[0];
-    if (option.questType === "featured_quest") {
-      return { ...option, label: "Featured Quest — " + currentFeaturedQuest, note: currentFeaturedNote };
-    }
-    if (option.questType === "monthly_wellness") {
-      const monthQuest = getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth);
-      return { ...option, label: monthQuest.month + " Monthly Wellness Challenge — " + monthQuest.quest, points: 5, monthlyTheme: monthQuest.theme, monthlyVibe: monthQuest.vibe, proof: monthQuest.proof, photo: currentPhotoChallenge };
-    }
-    return option;
-  }
-
-  async function addCustomFeaturedQuest() {
-    const cleanQuest = newQuestText.trim();
-    if (!cleanQuest) return;
-    const cleanNote = newQuestNote.trim();
-    setCurrentFeaturedQuest(cleanQuest);
-    setFeaturedSuggestion(cleanQuest);
-    if (cleanNote) setCurrentFeaturedNote(cleanNote);
-    setNewQuestText("");
-    setNewQuestNote("");
-    try {
-      await postAdminAction("addQuest", { quest: cleanQuest, note: cleanNote, points: 5, category: "Featured Quest", updatedBy: currentChief || chiefName || "chief" });
-      await saveChiefSettingsToSheet({ currentFeaturedQuest: cleanQuest, currentFeaturedNote: cleanNote || currentFeaturedNote });
-      setSettingsStatus("New quest saved to Google Sheet.");
-    } catch (error) {
-      setSettingsStatus("Quest saved locally, but Google Sheet save failed.");
-      console.error(error);
-    }
-  }
-
-  async function addCustomRosterMember() {
-    const cleanName = newMemberName.trim();
-    if (!cleanName || !newMemberHouse) {
-      setNewMemberMessage("Add a name and house first.");
+    if (!file) {
+      setPhotoPreview("");
       return;
     }
-    const exists = findRosterPersonInList(cleanName, fullRoster);
-    if (exists) {
-      setNewMemberMessage(cleanName + " is already listed in " + exists.house + ".");
+    const preview = await dataUrlFromFile(file);
+    setPhotoPreview(preview);
+  }
+
+  function pickQuest(quest) {
+    setQuestKey(quest.key);
+    setPoints(quest.points);
+    if (quest.key === "pitch") {
+      setStatus("Pitch selected. Add a note so the chiefs know what they are approving.");
+      setStatusKind("");
+    } else {
+      setStatus("");
+      setStatusKind("");
+    }
+  }
+
+  const submitButtonText = !submitter.trim()
+    ? "Add name"
+    : !house
+    ? "Pick house"
+    : !questKey
+    ? "Pick points"
+    : selectedQuest?.key === "pitch" && !String(points).trim()
+    ? "Add points"
+    : selectedQuest?.key === "pitch" && !note.trim()
+    ? "Add pitch"
+    : "Submit";
+
+  const canSubmit =
+    submitter.trim() &&
+    house &&
+    questKey &&
+    (selectedQuest?.key !== "pitch" || (String(points).trim() && note.trim()));
+
+  async function submitPoints() {
+    if (!canSubmit) {
+      setStatus("Almost there — " + submitButtonText.toLowerCase() + ".");
+      setStatusKind("error");
       return;
     }
-    const person = { name: cleanName, house: newMemberHouse, role: newMemberRole || "Resident" };
-    setCustomRoster((previous) => previous.concat(person));
-    setNewMemberName("");
-    setNewMemberHouse("");
-    setNewMemberRole("Resident");
-    setNewMemberMessage("Adding " + cleanName + " to the Team sheet...");
-    try {
-      await postAdminAction("addTeamMember", { member: person, updatedBy: currentChief || chiefName || "chief" });
-      await syncBackendConfig({ silent: true });
-      setNewMemberMessage("Added " + cleanName + " to the Team sheet.");
-    } catch (error) {
-      setNewMemberMessage("Added locally, but Team sheet save failed.");
-      console.error(error);
-    }
-  }
 
-  function removeCustomRosterMember(nameToRemove) {
-    setCustomRoster((previous) => previous.filter((person) => person.name !== nameToRemove));
-  }
+    setStatus("Submitting...");
+    setStatusKind("");
 
-  function useMonthlyPhotoChallenge() {
-    setCurrentPhotoChallenge(getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).photo);
-    setNewPhotoChallengeText("");
-  }
-
-  async function syncSheet(options) {
-    const opts = options || {};
-    try {
-      if (!opts.silent) setSheetStatus("Syncing Google Sheet leaderboard...");
-      const sheetRows = await readSubmissionsFromAppsScript();
-
-      if (!Array.isArray(sheetRows)) {
-        setSheetStatus("Sheet response was not readable. Using local backup.");
-        return false;
-      }
-
-      if (sheetRows.length === 0 && opts.keepLocalIfEmpty) {
-        setSheetStatus("Google Sheet has 0 rows. Using local backup until Sheet has submissions.");
-        return false;
-      }
-
-      setRows(sheetRows);
-      setLastSaved(sheetRows[0] || null);
-      setSheetStatus("Live from Google Sheet · " + sheetRows.length + " submission row(s).");
-      return true;
-    } catch (error) {
-      setSheetStatus("Could not read Google Sheet. Using local backup.");
-      console.error(error);
-      return false;
-    }
-  }
-
-  async function syncBackendConfig(options) {
-    const opts = options || {};
-    try {
-      if (!opts.silent) setSettingsStatus("Syncing team/settings sheets...");
-      const [team, settings] = await Promise.all([
-        readTeamFromAppsScript(),
-        readSettingsFromAppsScript(),
-      ]);
-      if (Array.isArray(team) && team.length > 0) setRemoteRoster(team);
-      if (settings.currentFeaturedQuest) setCurrentFeaturedQuest(settings.currentFeaturedQuest);
-      if (settings.currentFeaturedNote) setCurrentFeaturedNote(settings.currentFeaturedNote);
-      if (settings.currentMonthlyWellnessMonth) setCurrentMonthlyWellnessMonth(settings.currentMonthlyWellnessMonth);
-      if (settings.currentPhotoChallenge) setCurrentPhotoChallenge(settings.currentPhotoChallenge);
-      setSettingsStatus("Team/settings live from Google Sheet.");
-      return true;
-    } catch (error) {
-      setSettingsStatus("Using built-in/local team/settings backup.");
-      console.error(error);
-      return false;
-    }
-  }
-
-  async function saveChiefSettingsToSheet(settingsOverride) {
-    const settings = {
-      currentFeaturedQuest,
-      currentFeaturedNote,
-      currentMonthlyWellnessMonth,
-      currentPhotoChallenge,
-      ...(settingsOverride || {}),
-    };
-    await postAdminAction("saveSettings", { settings, updatedBy: currentChief || chiefName || "chief" });
-    setSettingsStatus("Chief settings saved to Google Sheet.");
-  }
-
-  async function logActivity(activity) {
-    if (!canSubmit) return;
-    let finalActivity = activity.label;
-    let finalPoints = activity.points;
-    let finalCategory = "General";
-    let finalQuestType = activity.id;
-
-    if (activity.id === "wellness_community") {
-      finalCategory = "Wellness + Community";
-      finalQuestType = "wellness_community";
-      finalPoints = 3;
-    }
-    if (activity.id === "big_challenge") {
-      const selected = getQuestSelection();
-      finalActivity = selected.label;
-      finalPoints = selected.points;
-      finalCategory = selected.category || "Big Tucson Challenge";
-      finalQuestType = selected.questType || "big_tucson";
-    }
-    if (activity.id === "group_activity") {
-      finalCategory = "Group Activity";
-      finalQuestType = "group_activity";
-    }
-    if (activity.id === "group_exercise") {
-      finalCategory = "Group Exercise";
-      finalQuestType = "group_exercise";
-    }
-    if (activity.id === "academic") {
-      finalCategory = "Academic";
-      finalQuestType = "academic";
-    }
-    if (activity.id === "point_pitch") {
-      finalActivity = "Point pitch - chief review requested";
-      finalPoints = Number(pointPitchAmount) || 0;
-      finalCategory = "Point Pitch";
-      finalQuestType = "point_pitch";
-      if (!note.trim()) { setSubmitStatus("For a point pitch, tell us why you deserve points in the note field first."); return; }
-    }
+    const timestamp = new Date().toISOString();
+    const photoDataUrl = photoFile ? await dataUrlFromFile(photoFile) : "";
+    const numericPoints = Number(points || selectedQuest?.points || 0);
 
     const row = {
-      timestamp: new Date().toISOString(),
-      date: todayString(),
-      name: name.trim(),
-      house: effectiveHouse,
-      activity: finalActivity,
-      points: finalPoints,
-      category: finalCategory,
-      questType: finalQuestType,
+      id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      timestamp,
+      name: submitter.trim(),
+      submitter: submitter.trim(),
+      residentName: submitter.trim(),
+      house,
+      quest: selectedQuest?.title || questKey,
+      questKey,
+      points: numericPoints,
+      status: selectedQuest?.status || "approved",
       people: people.trim(),
-      note: finalQuestType === "point_pitch" ? "Requested " + finalPoints + " point(s): " + note.trim() : note.trim(),
-      photoName,
-      photoStatus: photoName ? "upload_requested" : "none",
-      source: finalQuestType === "point_pitch" ? "resident_point_pitch" : "resident_log",
-      uploadedBy: "resident",
-      status: finalQuestType === "point_pitch" ? "pending_review" : "approved",
-      reviewedBy: "",
-      reviewedAt: "",
-      reviewNote: "",
-      submissionId: makeSubmissionId(),
+      note: note.trim(),
+      photoPreview: photoDataUrl,
+      photoUrl: "",
+      source: "resident_submission",
     };
 
-    setRows((previousRows) => [row].concat(previousRows));
-    setLastSaved(row);
-    setNote("");
-    setSubmitStatus("Uploading to Google Sheet/Drive...");
+    const payload = {
+      ...row,
+      photoData: photoDataUrl,
+      photoBase64: photoDataUrl.includes(",") ? photoDataUrl.split(",")[1] : "",
+      photoFilename: photoFile?.name || "",
+      fileName: photoFile?.name || "",
+      mimeType: photoFile?.type || "",
+      adminEmail: ADMIN_EMAIL,
+    };
+
+    addLocalRow(row);
+
     try {
-      await submitToAppsScript(row, photoFile);
-      setSubmitStatus("Submitted.");
-      window.setTimeout(() => syncSheet({ silent: true, keepLocalIfEmpty: true }), 1200);
+      await submitToAppsScript(payload);
+      setStatus("Submitted. House points have entered the group chat.");
+      setStatusKind("good");
+      window.setTimeout(() => refreshSubmissions({ silent: true }), 1500);
     } catch (error) {
-      console.error(error);
-      setSubmitStatus("Saved locally, but Google upload failed. Export CSV as backup.");
+      setStatus("Saved locally, but backend did not answer: " + error.message);
+      setStatusKind("error");
     }
-    setPhotoName("");
-    setPhotoPreview("");
+
+    setSubmitter("");
+    setHouse("");
+    setManualHouse(false);
+    setQuestKey("");
+    setPoints("");
+    setPeople("");
+    setNote("");
     setPhotoFile(null);
+    setPhotoPreview("");
+    const fileInput = document.getElementById("hc-photo-input");
+    if (fileInput) fileInput.value = "";
   }
 
-  function loginChief() {
-    const chiefUser = authenticateChief(chiefName, chiefPassword);
-    if (chiefUser) { setChiefAuthed(true); setCurrentChief(chiefUser.name); setChiefMessage("Chief mode unlocked as " + chiefUser.name + "."); setActiveTab("chief"); syncBackendConfig({ silent: true }); }
-    else { setChiefAuthed(false); setCurrentChief(""); setChiefMessage("Get lost punk."); }
+  return (
+    <div className="hc-card hc-submit-card">
+      <div className="hc-mobile-submit-header">
+        <div>
+          <div className="hc-kicker">Resident Zone</div>
+          <h2>Submit points</h2>
+        </div>
+        <div className="hc-submit-pill">
+          {house ? `${getHouseIcon(house)} ${house}` : "Pick house"}
+        </div>
+      </div>
+
+      <label className="hc-label">Your name</label>
+      <input
+        className="hc-input hc-big-input"
+        list="resident-roster"
+        value={submitter}
+        onChange={(e) => {
+          setSubmitter(e.target.value);
+          if (!e.target.value) {
+            setHouse("");
+            setManualHouse(false);
+          }
+        }}
+        placeholder="Start typing your name"
+        autoComplete="name"
+      />
+
+      <datalist id="resident-roster">
+        {fullRoster.map((person) => (
+          <option key={person.name} value={person.name}>
+            {person.house}
+          </option>
+        ))}
+      </datalist>
+
+      {house && !manualHouse ? (
+        <div className="hc-house-confirm">
+          <span>
+            House: <b>{getHouseIcon(house)} {house}</b>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setManualHouse(true);
+              setHouse("");
+            }}
+          >
+            change
+          </button>
+        </div>
+      ) : (
+        <>
+          <label className="hc-label">House</label>
+          <select
+            className="hc-input hc-big-input"
+            value={house}
+            onChange={(e) => {
+              setHouse(e.target.value);
+              setManualHouse(true);
+            }}
+          >
+            <option value="">Choose house</option>
+            {HOUSES.map((h) => (
+              <option key={h.name} value={h.name}>
+                {h.icon} {h.name}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+
+      <div className="hc-section-title">What are you submitting?</div>
+
+      <div className="hc-quick-actions">
+        {QUESTS.map((quest) => (
+          <button
+            type="button"
+            key={quest.key}
+            className={questKey === quest.key ? "hc-quick-action selected" : "hc-quick-action"}
+            onClick={() => pickQuest(quest)}
+          >
+            <span>{quest.icon}</span>
+            <b>{quest.title}</b>
+            <small>{quest.points ? `+${quest.points} points` : "chief review"}</small>
+          </button>
+        ))}
+      </div>
+
+      {selectedQuest?.key === "pitch" && (
+        <>
+          <label className="hc-label">Requested points</label>
+          <input
+            className="hc-input hc-big-input"
+            type="number"
+            min="1"
+            max="25"
+            inputMode="numeric"
+            value={points}
+            onChange={(e) => setPoints(e.target.value)}
+            placeholder="Be reasonable-ish"
+          />
+        </>
+      )}
+
+      <details className="hc-mobile-details" open={selectedQuest?.key === "pitch"}>
+        <summary>Add details / people / proof</summary>
+
+        <label className="hc-label">Who was there?</label>
+        <textarea
+          className="hc-input"
+          value={people}
+          onChange={(e) => setPeople(e.target.value)}
+          placeholder="Names if this was a group thing"
+          rows={2}
+        />
+
+        <label className="hc-label">Tell us what happened</label>
+        <textarea
+          className="hc-input"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={selectedQuest?.notePlaceholder || "Optional context for the chiefs"}
+          rows={3}
+        />
+
+        <label className="hc-photo-upload">
+          <span>📸 Add photo proof</span>
+          <input
+            id="hc-photo-input"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoChange}
+          />
+        </label>
+
+        {photoPreview && (
+          <img className="hc-photo-preview" src={photoPreview} alt="Evidence preview" />
+        )}
+      </details>
+
+      {status && <div className={`hc-status ${statusKind}`}>{status}</div>}
+
+      <div className="hc-mobile-submit-spacer" />
+
+      <div className="hc-mobile-submit-bar">
+        <div>
+          <b>{points || selectedQuest?.points || "?"} pts</b>
+          <small>{selectedQuest?.shortTitle || "Choose type"}</small>
+        </div>
+        <button
+          type="button"
+          className="hc-button hc-submit-now"
+          onClick={submitPoints}
+          disabled={!canSubmit}
+        >
+          {submitButtonText}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function HallOfGlory({ rows, refreshSubmissions, sheetStatus }) {
+  const houseScores = useMemo(() => {
+    return HOUSES.map((house) => {
+      const total = rows
+        .filter((row) => row.house === house.name)
+        .filter((row) => String(row.status || "approved").toLowerCase() !== "rejected")
+        .reduce((sum, row) => sum + Number(row.points || 0), 0);
+
+      return { ...house, total };
+    }).sort((a, b) => b.total - a.total);
+  }, [rows]);
+
+  const recentRows = rows.slice(0, 20);
+
+  return (
+    <div className="hc-card">
+      <div className="hc-row" style={{ justifyContent: "space-between" }}>
+        <div>
+          <div className="hc-kicker">Hall of Glory</div>
+          <h2>Leaderboard</h2>
+        </div>
+        <button className="hc-button secondary" type="button" onClick={() => refreshSubmissions({ silent: false })}>
+          Refresh Google Sheet
+        </button>
+      </div>
+      <p className="hc-muted">{sheetStatus}</p>
+
+      <div className="hc-grid">
+        {houseScores.map((house, index) => (
+          <div className="hc-leader" key={house.name}>
+            <div className="hc-house">
+              <span>{index === 0 ? "👑 " : ""}{house.icon} {house.name}</span>
+              <span>#{index + 1}</span>
+            </div>
+            <div className="hc-score">{house.total}</div>
+            <div className="hc-muted">points</div>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={{ marginTop: 22 }}>Recent submissions</h3>
+      <div className="hc-table-wrap">
+        <table className="hc-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Name</th>
+              <th>House</th>
+              <th>Quest</th>
+              <th>Pts</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentRows.length ? recentRows.map((row) => (
+              <tr key={row.id || row.timestamp + row.name}>
+                <td>{row.timestamp ? new Date(row.timestamp).toLocaleString() : ""}</td>
+                <td>{row.name || row.submitter || row.residentName}</td>
+                <td>{row.house}</td>
+                <td>{row.quest || row.questKey}</td>
+                <td>{row.points}</td>
+                <td>{row.note}</td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={6}>No submissions yet. The chaos awaits.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ChiefLair({
+  chiefAuthed,
+  setChiefAuthed,
+  currentChief,
+  setCurrentChief,
+  fullRoster,
+  setRemoteRoster,
+  addCustomPerson,
+  rows,
+  clearLocalRows,
+  refreshSubmissions,
+  refreshTeam,
+  sheetStatus,
+  teamStatus,
+}) {
+  const [chiefName, setChiefName] = useState("");
+  const [chiefPassword, setChiefPassword] = useState("");
+  const [chiefMessage, setChiefMessage] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newHouse, setNewHouse] = useState("");
+  const [newRole, setNewRole] = useState("Resident");
+
+  function login() {
+    const user = CHIEF_USERS.find(
+      (u) =>
+        normalizeName(u.name) === normalizeName(chiefName) ||
+        normalizeName(u.fullName) === normalizeName(chiefName)
+    );
+
+    if (!user || user.password !== chiefPassword) {
+      setChiefMessage("Nope. get lost punk.");
+      return;
+    }
+
+    setChiefAuthed(true);
+    setCurrentChief(user.fullName);
+    setChiefMessage("Chief mode unlocked as " + user.fullName + ".");
+    refreshTeam({ silent: true });
   }
 
-  async function importAttendance() {
-    const imported = attendanceTextToRows({ text: attendanceText, eventTitle: attendanceTitle, eventDate: attendanceDate, points: Number(attendancePoints) || 1, uploadedBy: currentChief || chiefName || "Unknown chief" });
-    if (!imported.length) { setUploadMessage("Paste at least one attendee name."); return; }
-    setRows((previousRows) => imported.concat(previousRows));
-    setAttendanceText("");
-    const unknownCount = imported.filter((row) => row.house === "Unknown").length;
-    setUploadMessage("Imported " + imported.length + " attendance entries" + (unknownCount ? " - " + unknownCount + " need roster/house cleanup" : "") + ".");
-    try { await submitRowsToAppsScript(imported); setUploadMessage("Imported and submitted " + imported.length + " attendance entries" + (unknownCount ? " - " + unknownCount + " need roster/house cleanup" : "") + "."); window.setTimeout(() => syncSheet({ silent: true, keepLocalIfEmpty: true }), 1200); } catch (error) { setUploadMessage("Imported locally, but Google upload failed. Export CSV as backup."); }
-  }
+  async function sendBackendTestRow() {
+    const payload = {
+      source: "chief_backend_test",
+      timestamp: new Date().toISOString(),
+      name: currentChief || "Chief Test",
+      submitter: currentChief || "Chief Test",
+      house: "Catalina",
+      quest: "Backend connection test",
+      questKey: "backend_test",
+      points: 1,
+      status: "approved",
+      note: "This is a backend test row from the Vercel app.",
+      people: "",
+    };
 
-  async function addChiefBonus() {
-    if (!bonusHouse) { setBonusMessage("Choose a house first."); return; }
-    const row = chiefBonusToRow({ house: bonusHouse, eventTitle: bonusTitle, eventDate: bonusDate, points: Number(bonusPoints) || 0, note: bonusNote, uploadedBy: currentChief || chiefName || "Unknown chief" });
-    setRows((previousRows) => [row].concat(previousRows));
-    setBonusNote("");
-    setBonusMessage("Added " + row.points + " bonus point(s) to " + row.house + ".");
-    try { await submitToAppsScript(row, null); setBonusMessage("Added and submitted " + row.points + " bonus point(s) to " + row.house + "."); window.setTimeout(() => syncSheet({ silent: true, keepLocalIfEmpty: true }), 1200); } catch (error) { setBonusMessage("Added locally, but Google upload failed. Export CSV as backup."); }
-  }
-
-  function reviewPointPitch(submission, index, decision) {
-    const submissionKey = submission.submissionId || submission.timestamp + "-" + index;
-    if (!canChiefApprovePitch(currentChief, submission)) { setApprovalMessage("Conflict check: chiefs cannot approve/deny point pitches from their own house. Ask a chief from another house."); return; }
-    setRows((previousRows) => reviewPointPitchRows(previousRows, submissionKey, decision, Number(approvalPoints) || submission.points || 0, currentChief, approvalNote));
-    setApprovalMessage((decision === "approve" ? "Approved" : "Denied") + " point pitch for " + submission.name + ".");
-    setApprovalNote("");
-  }
-
-  function clearRows() {
-    setRows([]);
-    setStoredRows([]);
-    setLastSaved(null);
-    setUploadMessage("");
-    setBonusMessage("");
-    setApprovalMessage("");
-    setSheetStatus("Local browser data cleared. Google Sheet data is unchanged.");
-  }
-
-  async function testBackendConnection() {
     try {
-      setSheetStatus("Testing Apps Script backend...");
-      await submitToAppsScript({
-        timestamp: new Date().toISOString(),
-        date: todayString(),
-        name: "backend test",
-        house: getChiefHouse(currentChief) || "Unknown",
-        activity: "backend connection test",
-        points: 0,
-        category: "Test",
-        questType: "backend_test",
-        people: "",
-        note: "If this row appears in the Submissions sheet, the web app is connected to Apps Script.",
-        photoName: "",
-        photoStatus: "not_required",
-        source: "web_app_backend_test",
-        uploadedBy: currentChief || "chief",
-        status: "approved",
-        reviewedBy: currentChief || "",
-        reviewedAt: new Date().toISOString(),
-        reviewNote: "",
-        submissionId: makeSubmissionId(),
-      }, null);
-      setSheetStatus("Backend test sent. Check the Submissions sheet for a backend connection test row.");
+      await submitToAppsScript(payload);
+      setChiefMessage("Backend test sent. Check the Submissions tab.");
+      window.setTimeout(() => refreshSubmissions({ silent: true }), 1500);
     } catch (error) {
-      setSheetStatus("Backend test failed locally. Check Apps Script URL/deployment/access.");
-      console.error(error);
+      setChiefMessage("Backend test failed: " + error.message);
+    }
+  }
+
+  async function addPerson() {
+    if (!newName.trim() || !newHouse) {
+      setChiefMessage("Add a name and house first.");
+      return;
+    }
+
+    const person = {
+      name: newName.trim(),
+      house: newHouse,
+      role: newRole || "Resident",
+      active: true,
+      source: "chief_admin",
+      adminAction: "addTeamMember",
+      timestamp: new Date().toISOString(),
+    };
+
+    addCustomPerson(person);
+
+    try {
+      await submitToAppsScript(person);
+      setChiefMessage("Added " + person.name + ". Also attempted to save to Team sheet.");
+    } catch (error) {
+      setChiefMessage("Added locally, but Team sheet save failed: " + error.message);
+    }
+
+    setNewName("");
+    setNewHouse("");
+    setNewRole("Resident");
+  }
+
+  if (!chiefAuthed) {
+    return (
+      <div className="hc-card hc-login">
+        <div className="hc-kicker">Secret Chief Lair</div>
+        <h2>Chief login</h2>
+        <label className="hc-label">Chief</label>
+        <input
+          className="hc-input hc-big-input"
+          value={chiefName}
+          onChange={(e) => setChiefName(e.target.value)}
+          placeholder="Nate / Rosie / Amrutha / Will / Johnny"
+        />
+        <label className="hc-label">Password</label>
+        <input
+          className="hc-input hc-big-input"
+          type="password"
+          value={chiefPassword}
+          onChange={(e) => setChiefPassword(e.target.value)}
+          placeholder="get lost punk"
+        />
+        <div className="hc-row" style={{ marginTop: 14 }}>
+          <button type="button" className="hc-button" onClick={login}>
+            Unlock
+          </button>
+        </div>
+        {chiefMessage && <div className="hc-status error">{chiefMessage}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="hc-card">
+      <div className="hc-row" style={{ justifyContent: "space-between" }}>
+        <div>
+          <div className="hc-kicker">Secret Chief Lair</div>
+          <h2>Unlocked as {currentChief}</h2>
+        </div>
+        <button type="button" className="hc-button secondary" onClick={() => setChiefAuthed(false)}>
+          Lock
+        </button>
+      </div>
+
+      <div className="hc-grid-3">
+        <a className="hc-button secondary" href={GOOGLE_SUBMISSIONS_SHEET_URL} target="_blank" rel="noreferrer">
+          Open Google Sheet
+        </a>
+        <a className="hc-button secondary" href={GOOGLE_EVIDENCE_FOLDER_URL} target="_blank" rel="noreferrer">
+          Open Photo Folder
+        </a>
+        <a className="hc-button secondary" href={APPS_SCRIPT_WEB_APP_URL} target="_blank" rel="noreferrer">
+          Open Backend
+        </a>
+      </div>
+
+      <div className="hc-row" style={{ marginTop: 14 }}>
+        <button type="button" className="hc-button" onClick={() => refreshTeam({ silent: false })}>
+          Refresh team/settings
+        </button>
+        <button type="button" className="hc-button" onClick={() => refreshSubmissions({ silent: false })}>
+          Refresh submissions
+        </button>
+        <button type="button" className="hc-button secondary" onClick={sendBackendTestRow}>
+          Send backend test row
+        </button>
+        <button type="button" className="hc-button danger" onClick={clearLocalRows}>
+          Clear local browser data
+        </button>
+      </div>
+
+      <p className="hc-muted">{teamStatus}</p>
+      <p className="hc-muted">{sheetStatus}</p>
+      {chiefMessage && <div className="hc-status">{chiefMessage}</div>}
+
+      <h3>Add team member</h3>
+      <div className="hc-grid-3">
+        <input
+          className="hc-input"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="First Last"
+        />
+        <select className="hc-input" value={newHouse} onChange={(e) => setNewHouse(e.target.value)}>
+          <option value="">House</option>
+          {HOUSES.map((h) => (
+            <option key={h.name} value={h.name}>{h.name}</option>
+          ))}
+        </select>
+        <input
+          className="hc-input"
+          value={newRole}
+          onChange={(e) => setNewRole(e.target.value)}
+          placeholder="Resident / Faculty / Staff"
+        />
+      </div>
+      <div className="hc-row" style={{ marginTop: 10 }}>
+        <button type="button" className="hc-button" onClick={addPerson}>
+          Add person
+        </button>
+      </div>
+
+      <h3>Roster reference</h3>
+      <div className="hc-table-wrap">
+        <table className="hc-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>House</th>
+              <th>Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fullRoster.map((person) => (
+              <tr key={person.name}>
+                <td>{person.name}</td>
+                <td>{person.house}</td>
+                <td>{person.role}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Recent rows</h3>
+      <p className="hc-muted">{rows.length} rows currently visible in app.</p>
+    </div>
+  );
+}
+
+function NerdStuff({ rows, fullRoster, refreshSubmissions }) {
+  return (
+    <div className="hc-card">
+      <div className="hc-row" style={{ justifyContent: "space-between" }}>
+        <div>
+          <div className="hc-kicker">Nerd Stuff</div>
+          <h2>Data export</h2>
+        </div>
+        <button type="button" className="hc-button secondary" onClick={() => refreshSubmissions({ silent: false })}>
+          Refresh Google Sheet
+        </button>
+      </div>
+
+      <div className="hc-row">
+        <button
+          type="button"
+          className="hc-button"
+          onClick={() => downloadTextFile("house-cup-submissions.csv", toCsv(rows))}
+          disabled={!rows.length}
+        >
+          Download CSV
+        </button>
+      </div>
+
+      <h3>Roster count</h3>
+      <p className="hc-muted">{fullRoster.length} people in roster.</p>
+
+      <h3>Submission log</h3>
+      <div className="hc-table-wrap">
+        <table className="hc-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Name</th>
+              <th>House</th>
+              <th>Quest</th>
+              <th>Points</th>
+              <th>Status</th>
+              <th>People</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id || row.timestamp + row.name + row.quest}>
+                <td>{row.timestamp}</td>
+                <td>{row.name || row.submitter || row.residentName}</td>
+                <td>{row.house}</td>
+                <td>{row.quest}</td>
+                <td>{row.points}</td>
+                <td>{row.status}</td>
+                <td>{row.people}</td>
+                <td>{row.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState("resident");
+  const [rows, setRows] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("houseCupRows") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [customRoster, setCustomRoster] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("houseCupCustomRoster") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [remoteRoster, setRemoteRoster] = useState([]);
+  const [sheetStatus, setSheetStatus] = useState("Local backup loaded. Tap Refresh Google Sheet for shared leaderboard.");
+  const [teamStatus, setTeamStatus] = useState("Team sheet not loaded yet.");
+  const [chiefAuthed, setChiefAuthed] = useState(false);
+  const [currentChief, setCurrentChief] = useState("");
+
+  const fullRoster = useMemo(() => {
+    return dedupePeople([...remoteRoster, ...customRoster, ...ROSTER]);
+  }, [remoteRoster, customRoster]);
+
+  useEffect(() => {
+    localStorage.setItem("houseCupRows", JSON.stringify(rows));
+  }, [rows]);
+
+  useEffect(() => {
+    localStorage.setItem("houseCupCustomRoster", JSON.stringify(customRoster));
+  }, [customRoster]);
+
+  function addLocalRow(row) {
+    setRows((prev) => [row, ...prev]);
+  }
+
+  function addCustomPerson(person) {
+    setCustomRoster((prev) => dedupePeople([person, ...prev]));
+  }
+
+  function clearLocalRows() {
+    setRows([]);
+    localStorage.removeItem("houseCupRows");
+  }
+
+  async function refreshSubmissions({ silent = false } = {}) {
+    if (!APPS_SCRIPT_WEB_APP_URL || APPS_SCRIPT_WEB_APP_URL.includes("PASTE_")) {
+      setSheetStatus("Apps Script URL missing.");
+      return;
+    }
+
+    if (!silent) setSheetStatus("Loading Google Sheet...");
+    try {
+      const data = await jsonp(`${APPS_SCRIPT_WEB_APP_URL}?action=submissions`);
+      const submissions = data?.submissions || data?.rows || [];
+      if (Array.isArray(submissions)) {
+        setRows(
+          submissions
+            .map((row, index) => ({
+              id: row.id || row.timestamp + "-" + index,
+              timestamp: row.timestamp || row.Timestamp || row.date || "",
+              name: row.name || row.submitter || row.residentName || row.Name || "",
+              submitter: row.submitter || row.name || "",
+              residentName: row.residentName || row.name || "",
+              house: row.house || row.House || "",
+              quest: row.quest || row.type || row.Quest || "",
+              questKey: row.questKey || "",
+              points: Number(row.points || row.Points || 0),
+              status: row.status || row.Status || "approved",
+              people: row.people || row.People || "",
+              note: row.note || row.Note || "",
+              photoUrl: row.photoUrl || row.evidenceUrl || "",
+            }))
+            .reverse()
+        );
+        setSheetStatus(`Loaded ${submissions.length} submissions from Google Sheet.`);
+      } else {
+        setSheetStatus("Google Sheet loaded, but no submissions array found.");
+      }
+    } catch (error) {
+      setSheetStatus("Could not load Google Sheet: " + error.message);
+    }
+  }
+
+  async function refreshTeam({ silent = false } = {}) {
+    if (!APPS_SCRIPT_WEB_APP_URL || APPS_SCRIPT_WEB_APP_URL.includes("PASTE_")) {
+      setTeamStatus("Apps Script URL missing.");
+      return;
+    }
+
+    if (!silent) setTeamStatus("Loading Team sheet...");
+    try {
+      let data = await jsonp(`${APPS_SCRIPT_WEB_APP_URL}?action=bootstrap`);
+      if (!data?.team) {
+        data = await jsonp(`${APPS_SCRIPT_WEB_APP_URL}?action=team`);
+      }
+      const team = data?.team || data?.members || [];
+      if (Array.isArray(team)) {
+        const cleaned = team
+          .map((person) => ({
+            name: person.name || person.Name || "",
+            house: person.house || person.House || "",
+            role: person.role || person.Role || "Resident",
+            active: person.active ?? person.Active ?? true,
+          }))
+          .filter((person) => person.name && person.house)
+          .filter((person) => String(person.active).toLowerCase() !== "false");
+
+        setRemoteRoster(cleaned);
+        setTeamStatus(`Loaded ${cleaned.length} active people from Team sheet.`);
+      } else {
+        setTeamStatus("Team endpoint loaded, but no team array found.");
+      }
+
+      const submissions = data?.submissions || [];
+      if (Array.isArray(submissions) && submissions.length) {
+        setRows(submissions.reverse());
+        setSheetStatus(`Loaded ${submissions.length} submissions from bootstrap.`);
+      }
+    } catch (error) {
+      setTeamStatus("Could not load Team sheet: " + error.message);
     }
   }
 
   return (
-    <div className="hc-page">
+    <>
       <HouseCupStyles />
-      <div className="hc-shell">
-        <header className="hc-hero">
-          <div className="hc-kicker">🏔️ UA Internal Medicine House Cup</div>
-          <h1 className="hc-title">Point-O-Matic</h1>
-          <div className="hc-marquee-wrap"><div className="hc-marquee">★ WELCOME RESIDENTS &amp; FACULTY ★ LOG YOUR POINTS ★ DO COOL STUFF ★ TOUCH GRASS ★ BE WELL ★</div></div>
-          <div className="hc-counterbar"><div className="hc-underconstruction">UNDER CONSTRUCTION</div><a className="hc-webmaster" href="mailto:nathantwalton@gmail.com?subject=House%20Cup%20bug%20%2F%20goblin%20complaint&body=Dear%20webmaster%2C%0A%0AI%20regret%20to%20inform%20you...%0A%0AThe%20problem%20is%3A%0A%0AHouse%3A%0AName%3A%0AScreenshot%20or%20evidence%3A%0A%0AWith%20respectful%20chaos%2C%0A">email the webmaster</a><div className="hc-counter">Status: <span className="hc-blink">ONLINE</span></div></div>
-        </header>
+      <div className="hc-page">
+        <div className="hc-shell">
+          <header className="hc-hero">
+            <div className="hc-kicker">🏆 Internal Medicine Residency Cup</div>
+            <h1 className="hc-title">Point-O-Matic</h1>
+            <p className="hc-subtitle">
+              Submit house points fast. Phone-first, camera-friendly, and only mildly cursed.
+            </p>
+          </header>
 
-        <nav className="hc-tabs">
-          <TabButton active={activeTab === "log"} onClick={() => setActiveTab("log")}>Resident Zone</TabButton>
-          <TabButton active={activeTab === "leaderboard"} onClick={() => setActiveTab("leaderboard")}>Hall of Glory</TabButton>
-          <TabButton active={activeTab === "chiefLogin" || activeTab === "chief"} onClick={() => setActiveTab(chiefAuthed ? "chief" : "chiefLogin")}>Secret Chief Lair</TabButton>
-          <TabButton active={activeTab === "data"} onClick={() => setActiveTab("data")}>Nerd Stuff</TabButton>
-        </nav>
+          <nav className="hc-tabs" aria-label="House Cup tabs">
+            <button
+              type="button"
+              className={activeTab === "resident" ? "hc-tab active" : "hc-tab"}
+              onClick={() => setActiveTab("resident")}
+            >
+              Submit
+            </button>
+            <button
+              type="button"
+              className={activeTab === "leaderboard" ? "hc-tab active" : "hc-tab"}
+              onClick={() => setActiveTab("leaderboard")}
+            >
+              Glory
+            </button>
+            <button
+              type="button"
+              className={activeTab === "chief" ? "hc-tab active" : "hc-tab"}
+              onClick={() => setActiveTab("chief")}
+            >
+              Chiefs
+            </button>
+            <button
+              type="button"
+              className={activeTab === "data" ? "hc-tab active" : "hc-tab"}
+              onClick={() => setActiveTab("data")}
+            >
+              Nerd
+            </button>
+          </nav>
 
-        {activeTab === "log" && (
-          <section>
-            <div className="hc-card">
-              <div className="hc-grid hc-grid-4">
-                <div>
-                  <FieldLabel>Resident/Faculty/Staff name</FieldLabel>
-                  <TextInput list="names" value={name} onChange={(event) => setName(event.target.value)} placeholder="Start typing..." />
-                  <datalist id="names">{fullRoster.map((person) => <option key={person.name} value={person.name} />)}</datalist>
-                </div>
-                <div>
-                  <FieldLabel>House</FieldLabel>
-                  {rosterMatch ? <div className="hc-input"><b>{rosterMatch.house}</b> <span className="hc-muted">auto</span></div> : <SelectInput value={house} onChange={(event) => setHouse(event.target.value)}><option value="">Choose house</option>{HOUSES.map((h) => <option key={h} value={h}>{h}</option>)}</SelectInput>}
-                </div>
-                <div><FieldLabel>People with you</FieldLabel><TextInput value={people} onChange={(event) => setPeople(event.target.value)} placeholder="Optional" /></div>
-                <div><FieldLabel>Photo evidence</FieldLabel><input className="hc-input" type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} />{photoName && <div className="hc-muted">Selected: {photoName}</div>}{photoPreview && <img className="hc-photo-preview" src={photoPreview} alt="Evidence preview" />}</div>
-              </div>
-              <div style={{ marginTop: 12 }}><FieldLabel>Note or supporting documentation</FieldLabel><TextInput value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional, unless using point pitch" /></div>
-              {!canSubmit && <div className="hc-alert">Enter your name and house once, then submit points.</div>}
-            </div>
+          {activeTab === "resident" && (
+            <ResidentZone
+              fullRoster={fullRoster}
+              addLocalRow={addLocalRow}
+              refreshSubmissions={refreshSubmissions}
+            />
+          )}
 
-            <div className="hc-card">
-              <div className="hc-grid hc-grid-4">
-                <div style={{ gridColumn: "span 3" }}><FieldLabel>Quest picker</FieldLabel><SelectInput value={questLabel} onChange={(event) => setQuestLabel(event.target.value)}>{QUEST_OPTIONS.map((opt) => <option key={opt.label} value={opt.label}>{opt.category}: {opt.label} (+{opt.points || "?"})</option>)}</SelectInput></div>
-                <div><FieldLabel>Point pitch amount</FieldLabel><TextInput type="number" min="0" value={pointPitchAmount} onChange={(event) => setPointPitchAmount(event.target.value)} placeholder="?" /></div>
-              </div>
-              <div className="hc-quest-card">Current Featured Quest: {currentFeaturedQuest} (+5)</div>
-              <div className="hc-quest-card">Monthly Wellness: {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).month} — {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).quest} (+5). Proof: {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).proof}</div>
-              <div className="hc-quest-card">Photo Challenge: {currentPhotoChallenge}</div>
-              <div className="hc-muted" style={{ marginTop: 10 }}>Use this dropdown for Featured Quest, Monthly Wellness Challenge, or Big Tucson/custom challenges. Otherwise mash respective button below.</div>
-            </div>
+          {activeTab === "leaderboard" && (
+            <HallOfGlory
+              rows={rows}
+              refreshSubmissions={refreshSubmissions}
+              sheetStatus={sheetStatus}
+            />
+          )}
 
-            <div className="hc-actions">
-              {RESIDENT_ACTIVITIES.map((activity) => {
-                const quest = getQuestSelection();
-                const usesQuestPicker = activity.id === "big_challenge";
-                const isPitch = activity.id === "point_pitch";
-                const shownPoints = usesQuestPicker ? quest.points : isPitch ? "?" : activity.points;
-                const shownDescription = usesQuestPicker ? quest.label : isPitch ? "Requested: +" + (Number(pointPitchAmount) || 0) + " · requires note/chief review" : activity.description;
-                return <button key={activity.id} type="button" onClick={() => logActivity(activity)} disabled={!canSubmit} className="hc-action" style={{ background: activity.color }}><div className="hc-action-top"><span className="hc-icon">{activity.icon}</span><span className="hc-badge">{activity.id === "point_pitch" ? "+?" : "+" + (activity.id === "wellness_community" ? 3 : shownPoints)}</span></div><div className="hc-action-title">{activity.label}</div><p className="hc-action-desc">{activity.id === "big_challenge" ? "" : activity.id === "point_pitch" ? "For unsanctioned excellence and suspiciously wholesome nonsense." : shownDescription}</p></button>;
-              })}
-            </div>
+          {activeTab === "chief" && (
+            <ChiefLair
+              chiefAuthed={chiefAuthed}
+              setChiefAuthed={setChiefAuthed}
+              currentChief={currentChief}
+              setCurrentChief={setCurrentChief}
+              fullRoster={fullRoster}
+              setRemoteRoster={setRemoteRoster}
+              addCustomPerson={addCustomPerson}
+              rows={rows}
+              clearLocalRows={clearLocalRows}
+              refreshSubmissions={refreshSubmissions}
+              refreshTeam={refreshTeam}
+              sheetStatus={sheetStatus}
+              teamStatus={teamStatus}
+            />
+          )}
 
-            {submitStatus && <div className="hc-alert">{submitStatus}</div>}
-            {lastSaved && <div className="hc-success">Saved: {lastSaved.activity} · {lastSaved.name} · {lastSaved.house} · +{lastSaved.points} pts {lastSaved.photoName ? "· photo selected" : ""}</div>}
-            <section className="hc-footer"><b>Scoring:</b> AHD/conference = 1 point/hour via chief upload · Group activity = 2 (3+ people) · Group exercise = 2 (3+ people) · Academic flex = 3+ · Wellness + community = 3 · Monthly wellness challenge = 5 · Big Tucson challenges = 5 · Tell me why I should give you points? = chief review.</section>
-          </section>
-        )}
-
-        {activeTab === "leaderboard" && (
-          <section>
-            <div className="hc-row" style={{ marginTop: 18 }}><button className="hc-button" type="button" onClick={() => syncSheet({ keepLocalIfEmpty: true })}>Refresh Google Sheet</button><span className="hc-muted">{sheetStatus}</span></div>
-            <div className="hc-grid hc-grid-5" style={{ marginTop: 18 }}>{totals.map((total, index) => <div key={total.house} className="hc-leader"><div className="hc-rank">{getLeaderboardRankLabel(index)}</div><div className="hc-house">{total.house}</div><div className="hc-score">{total.points}</div><div className="hc-muted">points</div><div className="hc-trash">{getLeaderboardTrashTalk(index)}</div></div>)}</div>
-            <div className="hc-card"><h3>Achievement Badges</h3>{achievementBadges.length === 0 && <div className="hc-alert">No badges yet. Be the first to do literally anything.</div>}<div className="hc-badge-wall">{achievementBadges.map((badge) => <div key={badge.label} className="hc-achievement">{badge.label}<small>{badge.detail}</small></div>)}</div></div>
-            <div className="hc-card"><h3>Mini Wall of Fame</h3>{recentSubmissions.length === 0 && <div className="hc-alert">No submissions yet. The wall is tragically blank.</div>}<div className="hc-feed">{recentSubmissions.map((item, index) => <div key={index} className="hc-feed-item">{item.emoji} {item.text}</div>)}</div></div>
-            <div className="hc-card"><h3>Monthly Wellness Quests</h3><div className="hc-months">{MONTHLY_WELLNESS_QUESTS.map((month) => <div key={month.month} className="hc-month"><b>{month.month}: {month.theme}</b><br />{month.quest}<br /><span className="hc-muted">{month.vibe}<br />Proof: {month.proof}<br />Photo: {month.photo}</span></div>)}</div></div>
-          </section>
-        )}
-
-        {activeTab === "chiefLogin" && (
-          <section className="hc-card hc-login"><h2>🔐 Chief back-end</h2><p className="hc-muted">Chief uploads are tagged by uploader. Front-end login is light gatekeeping only — replace with real authentication before launch.</p><div style={{ marginTop: 12 }}><FieldLabel>Name</FieldLabel><TextInput value={chiefName} onChange={(event) => setChiefName(event.target.value)} placeholder="Nate" /></div><div style={{ marginTop: 12 }}><FieldLabel>Password</FieldLabel><TextInput type="password" value={chiefPassword} onChange={(event) => setChiefPassword(event.target.value)} placeholder="get lost punk" /></div><div className="hc-row" style={{ marginTop: 14 }}><button type="button" className="hc-button" onClick={loginChief}>Enter chief mode</button>{chiefMessage && <span className="hc-muted">{chiefMessage}</span>}</div></section>
-        )}
-
-        {activeTab === "chief" && chiefAuthed && (
-          <section className="hc-card"><div className="hc-row" style={{ justifyContent: "space-between" }}><div><h2>Secret Chief Lair</h2><p className="hc-muted">Logged in as <b>{currentChief}</b> ({getChiefHouse(currentChief)}). AHD/conference upload = 1 point/hour by default. Kahoot/trivia/custom bonuses are manually awarded here.</p></div><button type="button" className="hc-button secondary" onClick={() => { setChiefAuthed(false); setCurrentChief(""); setActiveTab("chiefLogin"); }}>Log out</button></div>
-            <div className="hc-card" style={{ boxShadow: "none" }}><h3>Google Docs / Drive settings</h3><p className="hc-muted">Admin/contact: <b>{ADMIN_EMAIL}</b>. Submissions sheet: <a href={GOOGLE_SUBMISSIONS_SHEET_URL} target="_blank" rel="noreferrer">open Google Sheet</a>. Evidence folder: <a href={GOOGLE_EVIDENCE_FOLDER_URL} target="_blank" rel="noreferrer">open Google Drive folder</a>. Apps Script endpoint: <a href={APPS_SCRIPT_WEB_APP_URL} target="_blank" rel="noreferrer">open backend</a>.</p><div className="hc-row" style={{ marginTop: 10 }}><button type="button" className="hc-button secondary" onClick={() => syncBackendConfig({ silent: false })}>Refresh team/settings</button><button type="button" className="hc-button secondary" onClick={testBackendConnection}>Send backend test row</button><button type="button" onClick={clearRows} disabled={!rows.length} className="hc-button danger">Clear local browser data</button></div><p className="hc-muted">{settingsStatus}</p><p className="hc-muted">Clearing local data only resets this browser. It does not delete the Google Sheet.</p></div>
-            <div className="hc-card" style={{ boxShadow: "none" }}><h3>Featured Quest / Monthly Wellness controls</h3><p className="hc-muted">Chief changes below save to the Google Sheet backend when connected. Local browser storage remains a fallback.</p><div className="hc-grid hc-grid-4"><div><FieldLabel>Featured quest idea bank</FieldLabel><SelectInput value={featuredSuggestion} onChange={(event) => { setFeaturedSuggestion(event.target.value); setCurrentFeaturedQuest(event.target.value); }}>{FEATURED_QUEST_IDEAS.map((idea) => <option key={idea} value={idea}>{idea}</option>)}</SelectInput><button type="button" className="hc-button secondary" style={{ marginTop: 8 }} onClick={async () => { const idea = getRandomFeaturedQuestIdea(); setFeaturedSuggestion(idea); setCurrentFeaturedQuest(idea); try { await saveChiefSettingsToSheet({ currentFeaturedQuest: idea }); } catch (error) { console.error(error); } }}>🎲 Random sweet quest</button></div><div><FieldLabel>Current featured quest</FieldLabel><TextInput value={currentFeaturedQuest} onChange={(event) => setCurrentFeaturedQuest(event.target.value)} /></div><div><FieldLabel>Featured quest note</FieldLabel><TextInput value={currentFeaturedNote} onChange={(event) => setCurrentFeaturedNote(event.target.value)} /></div><div><FieldLabel>Monthly wellness challenge</FieldLabel><SelectInput value={currentMonthlyWellnessMonth} onChange={async (event) => { const month = event.target.value; const photo = getCurrentMonthlyWellnessQuest(month).photo; setCurrentMonthlyWellnessMonth(month); setCurrentPhotoChallenge(photo); try { await saveChiefSettingsToSheet({ currentMonthlyWellnessMonth: month, currentPhotoChallenge: photo }); } catch (error) { console.error(error); } }}>{MONTHLY_WELLNESS_QUESTS.map((month) => <option key={month.month} value={month.month}>{month.month}: {month.theme}</option>)}</SelectInput></div></div><div className="hc-quest-card">Resident view now shows: Featured Quest — {currentFeaturedQuest} (+5)</div><div className="hc-quest-card">Monthly Wellness: {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).month} — {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).quest}</div><div className="hc-quest-card">Photo Challenge of the Month: {currentPhotoChallenge}</div><div className="hc-grid hc-grid-4" style={{ marginTop: 14 }}><div style={{ gridColumn: "span 2" }}><FieldLabel>Add new featured quest</FieldLabel><TextInput value={newQuestText} onChange={(event) => setNewQuestText(event.target.value)} placeholder="Example: Best monsoon sky walk" /></div><div><FieldLabel>Quest note</FieldLabel><TextInput value={newQuestNote} onChange={(event) => setNewQuestNote(event.target.value)} placeholder="Optional proof/vibe" /></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button" onClick={addCustomFeaturedQuest}>Add quest</button></div></div><div className="hc-grid hc-grid-4" style={{ marginTop: 14 }}><div style={{ gridColumn: "span 2" }}><FieldLabel>Photo challenge of the month</FieldLabel><TextInput value={newPhotoChallengeText} onChange={(event) => setNewPhotoChallengeText(event.target.value)} placeholder="Example: Best cactus + coffee evidence" /></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button" onClick={async () => { if (newPhotoChallengeText.trim()) { const challenge = newPhotoChallengeText.trim(); setCurrentPhotoChallenge(challenge); setNewPhotoChallengeText(""); try { await saveChiefSettingsToSheet({ currentPhotoChallenge: challenge }); } catch (error) { console.error(error); } } }}>Set photo challenge</button></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button secondary" onClick={async () => { useMonthlyPhotoChallenge(); try { await saveChiefSettingsToSheet({ currentPhotoChallenge: getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).photo }); } catch (error) { console.error(error); } }}>Use monthly default</button></div></div></div><div className="hc-card" style={{ boxShadow: "none" }}><h3>Add temporary team member</h3><p className="hc-muted">Adds someone to the Team sheet so future chief classes can manage roster changes without code edits. Local browser storage is a fallback.</p><div className="hc-grid hc-grid-4"><div><FieldLabel>Name</FieldLabel><TextInput value={newMemberName} onChange={(event) => setNewMemberName(event.target.value)} placeholder="New Person" /></div><div><FieldLabel>House</FieldLabel><SelectInput value={newMemberHouse} onChange={(event) => setNewMemberHouse(event.target.value)}><option value="">Choose house</option>{HOUSES.map((h) => <option key={h} value={h}>{h}</option>)}</SelectInput></div><div><FieldLabel>Role</FieldLabel><TextInput value={newMemberRole} onChange={(event) => setNewMemberRole(event.target.value)} placeholder="Resident / Faculty / Staff" /></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button" onClick={addCustomRosterMember}>Add person</button></div></div>{newMemberMessage && <div className="hc-success">{newMemberMessage}</div>}{customRoster.length > 0 && <div className="hc-table-wrap" style={{ marginTop: 12 }}><table className="hc-table"><thead><tr><th>Name</th><th>House</th><th>Role</th><th>Remove</th></tr></thead><tbody>{customRoster.map((person) => <tr key={person.name}><td>{person.name}</td><td>{person.house}</td><td>{person.role}</td><td><button type="button" className="hc-button danger" onClick={() => removeCustomRosterMember(person.name)}>Remove</button></td></tr>)}</tbody></table></div>}</div>
-            <div className="hc-grid hc-grid-4" style={{ marginTop: 18 }}><div><FieldLabel>AHD event title</FieldLabel><TextInput value={attendanceTitle} onChange={(event) => setAttendanceTitle(event.target.value)} /></div><div><FieldLabel>Date</FieldLabel><TextInput type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} /></div><div><FieldLabel>Points/hour</FieldLabel><TextInput type="number" min="1" value={attendancePoints} onChange={(event) => setAttendancePoints(event.target.value)} /></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button" onClick={importAttendance}>Upload AHD</button></div></div>
-            <div style={{ marginTop: 12 }}><FieldLabel>AHD/conference attendees</FieldLabel><textarea className="hc-input" style={{ minHeight: 110 }} value={attendanceText} onChange={(event) => setAttendanceText(event.target.value)} placeholder={"Paste names here:\nNate Walton\nResident Example\nFaculty Example"} /></div>{uploadMessage && <div className="hc-success">{uploadMessage}</div>}{unknownUploads.length > 0 && <div className="hc-alert">{unknownUploads.length} uploaded attendee(s) did not match roster.</div>}
-            <hr style={{ margin: "24px 0", border: "none", borderTop: "3px dashed #111827" }} />
-            <h3>Approval Zone</h3><p className="hc-muted">Point pitches must be approved or denied by a chief who is not in the same house.</p><div className="hc-grid hc-grid-4" style={{ marginTop: 12 }}><div><FieldLabel>Approved points</FieldLabel><TextInput type="number" min="0" value={approvalPoints} onChange={(event) => setApprovalPoints(event.target.value)} /></div><div><FieldLabel>Review note</FieldLabel><TextInput value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} placeholder="Optional" /></div><div className="hc-muted" style={{ alignSelf: "end" }}>Logged in as {currentChief} ({getChiefHouse(currentChief)}).</div></div>
-            {pendingPointPitches.length === 0 && <div className="hc-alert">No pending point pitches.</div>}{pendingPointPitches.map((pitch, index) => { const blocked = !canChiefApprovePitch(currentChief, pitch); return <div key={pitch.submissionId || pitch.timestamp + "-" + index} className="hc-card" style={{ boxShadow: "none", background: blocked ? "#fee2e2" : "#fff7b8" }}><div><b>{pitch.name}</b> · {pitch.house} · requested +{pitch.points}</div><div className="hc-muted">{pitch.note}</div><div className="hc-muted">Conflict check: {blocked ? "BLOCKED — same house or unknown house" : "OK — different house chief"}</div><div className="hc-row" style={{ marginTop: 10 }}><button type="button" className="hc-button" disabled={blocked} onClick={() => reviewPointPitch(pitch, index, "approve")}>Approve</button><button type="button" className="hc-button danger" disabled={blocked} onClick={() => reviewPointPitch(pitch, index, "deny")}>Deny</button></div></div>; })}{approvalMessage && <div className="hc-success">{approvalMessage}</div>}
-            <hr style={{ margin: "24px 0", border: "none", borderTop: "3px dashed #111827" }} />
-            <h3>Kahoot / trivia / bonus points</h3><div className="hc-grid hc-grid-5"><div><FieldLabel>House</FieldLabel><SelectInput value={bonusHouse} onChange={(event) => setBonusHouse(event.target.value)}><option value="">Choose house</option>{HOUSES.map((h) => <option key={h} value={h}>{h}</option>)}</SelectInput></div><div><FieldLabel>Bonus title</FieldLabel><TextInput value={bonusTitle} onChange={(event) => setBonusTitle(event.target.value)} /></div><div><FieldLabel>Date</FieldLabel><TextInput type="date" value={bonusDate} onChange={(event) => setBonusDate(event.target.value)} /></div><div><FieldLabel>Points</FieldLabel><TextInput type="number" min="0" value={bonusPoints} onChange={(event) => setBonusPoints(event.target.value)} /></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button" onClick={addChiefBonus}>Add bonus</button></div></div><div style={{ marginTop: 12 }}><FieldLabel>Bonus note</FieldLabel><TextInput value={bonusNote} onChange={(event) => setBonusNote(event.target.value)} placeholder="Winner, runner-up, chaos award, etc." /></div>{bonusMessage && <div className="hc-success">{bonusMessage}</div>}
-          </section>
-        )}
-
-        {activeTab === "data" && (
-          <section className="hc-card"><div className="hc-row"><button type="button" onClick={() => syncSheet({ keepLocalIfEmpty: true })} className="hc-button">🔄 Refresh Google Sheet</button><button type="button" onClick={() => downloadCSV(rows)} disabled={!rows.length} className="hc-button">⬇️ Download CSV</button></div><div className="hc-alert">{sheetStatus}</div><h3>Submission log</h3><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>When</th><th>Date</th><th>Name</th><th>House</th><th>Activity</th><th>Pts</th><th>Status</th><th>Photo</th><th>Source</th></tr></thead><tbody>{rows.map((row, index) => <tr key={row.submissionId || row.timestamp + "-" + index}><td>{row.timestamp ? new Date(row.timestamp).toLocaleString() : ""}</td><td>{row.date}</td><td>{row.name}</td><td>{row.house}</td><td>{row.activity}</td><td><b>{row.points}</b></td><td>{row.status || "approved"}</td><td>{row.photoUrl ? <a href={row.photoUrl} target="_blank" rel="noreferrer">photo</a> : ""}</td><td>{row.source}</td></tr>)}{!rows.length && <tr><td colSpan="9" style={{ textAlign: "center", color: "#64748b" }}>No points logged yet.</td></tr>}</tbody></table></div><h3 style={{ marginTop: 22 }}>Roster reference</h3><p className="hc-muted">Use this to check house assignments when logging attendance or adding new folks to the external roster sheet.</p><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>Name</th><th>House</th><th>Role</th></tr></thead><tbody>{fullRoster.slice().sort((a, b) => a.house.localeCompare(b.house) || a.role.localeCompare(b.role) || a.name.localeCompare(b.name)).map((person) => <tr key={person.name}><td>{person.name}</td><td>{person.house}</td><td>{person.role}</td></tr>)}</tbody></table></div></section>
-        )}
+          {activeTab === "data" && (
+            <NerdStuff
+              rows={rows}
+              fullRoster={fullRoster}
+              refreshSubmissions={refreshSubmissions}
+            />
+          )}
+        </div>
       </div>
-      <Analytics />
-    </div>
+    </>
   );
 }
