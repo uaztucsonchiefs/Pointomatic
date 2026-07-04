@@ -10,10 +10,10 @@ const APPS_SCRIPT_WEB_APP_URL =
   "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
 const GOOGLE_SUBMISSIONS_SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/PASTE_NEW_SPREADSHEET_ID_HERE/edit";
+  "https://docs.google.com/spreadsheets/d/1-qxEZt2q_n6Len0yIcMfODnLyIsDfz-yhD60AkcSz5U/edit?gid=1636192795#gid=1636192795";
 
 const GOOGLE_EVIDENCE_FOLDER_URL =
-  "https://drive.google.com/drive/folders/PASTE_NEW_FOLDER_ID_HERE";
+  "https://drive.google.com/drive/folders/1R55IwjF-h1XnklopowLxctU_9RRdM6Hp";
 
 const ADMIN_EMAIL = "uaztucsonchiefs@gmail.com";
 
