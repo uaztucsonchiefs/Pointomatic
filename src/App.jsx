@@ -14,7 +14,7 @@ const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
 const APPS_SCRIPT_WEB_APP_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
-  "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
+  "https://script.google.com/macros/s/AKfycbxXoLjY8VaxMrWAUBk60ZmccFnZOPHSj3_eujzpMLEMBCgEahN9rWzGUQFyC75K4C6e/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
 
@@ -1623,6 +1623,35 @@ async function chiefGet(action, pass, extra) {
   return res.json();
 }
 
+
+// Chief challenge changes should be readable/verified, not fire-and-forget.
+// Uses GET so the app can confirm Apps Script actually saved the new quest, then
+// falls back to POST for older Code.gs builds that only route setChallenge in doPost.
+async function saveChallengeToBackend(payload) {
+  const params = new URLSearchParams();
+  Object.keys(payload || {}).forEach(function addKey(key) {
+    if (payload[key] !== undefined && payload[key] !== null) params.set(key, String(payload[key]));
+  });
+  params.set("_", String(Date.now()));
+
+  try {
+    const res = await fetch(APPS_SCRIPT_WEB_APP_URL + "?" + params.toString(), {
+      method: "GET",
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.ok === false) throw new Error(json.error || "Backend rejected quest");
+      if (json && (json.ok === true || json.challenge || json.challenges)) return json;
+    }
+  } catch (err) {
+    // Fall through to POST for older deployments.
+  }
+
+  await postToBackend(payload);
+  return { ok: true, unverified: true };
+}
+
 // Remember who's mashing so voting and the next visit skip the typing. Guarded: never required.
 function rememberName(name) {
   try { window.localStorage.setItem("pom-name", name); } catch (e) { /* private mode etc. */ }
@@ -2520,7 +2549,7 @@ function ChiefTab(props) {
     try {
       // Keep the original backend contract, but include common aliases so older/newer
       // Apps Script versions still recognize the quest rotation payload.
-      await postToBackend({
+      const savePayload = {
         action: "setChallenge",
         actionAlias: "setQuest",
         chief: chiefName,
@@ -2542,23 +2571,25 @@ function ChiefTab(props) {
         note: cleanNote,
         notes: cleanNote,
         description: cleanNote,
-      });
+      };
+      const saved = await saveChallengeToBackend(savePayload);
+      const savedQuest = (saved && saved.challenge) || {
+        title: cleanTitle,
+        points: cleanPoints,
+        endDate: chEnd,
+        note: cleanNote,
+      };
       if (props && typeof props.onQuestSaved === "function") {
-        props.onQuestSaved(chType, {
-          title: cleanTitle,
-          points: cleanPoints,
-          endDate: chEnd,
-          note: cleanNote,
-        });
+        props.onQuestSaved(chType, savedQuest);
       }
-      setChMsg("Quest set: " + cleanTitle + " (" + cleanPoints + " pts). It should update on the Earn tab now; residents may need a refresh if their phone cached the app." + (bankCopy ? " Launch copy is ready below — paste it in the group chat." : ""));
+      setChMsg("Quest saved to the backend: " + cleanTitle + " (" + cleanPoints + " pts). Reloading should now keep it. If it still resets, redeploy Code.gs as a new web-app version." + (bankCopy ? " Launch copy is ready below — paste it in the group chat." : ""));
       setChTitle("");
       setChNote("");
       setBankPick("");
       setBankCopy("");
       setChPoints(defaultQuestPointsForType(chType));
     } catch (e) {
-      setChMsg("Quest did not save — check connection/backend deployment, then try again.");
+      setChMsg("Quest did not save — check chief password, Code.gs deployment, and the Challenges sheet, then try again.");
     } finally {
       setChBusy(false);
     }
