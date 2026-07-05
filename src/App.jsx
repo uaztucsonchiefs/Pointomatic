@@ -1928,7 +1928,7 @@ function EarnTab(props) {
             onClick={function toggleWhy() { setShowWhy(!showWhy); }}
           >
             <span className="pom-act-icon">🤔</span>
-            <span className="pom-act-label">Tell me why</span>
+            <span className="pom-act-label">I'm confused...please help.</span>
             <span className="pom-act-pts">rules</span>
           </button>
         </div>
