@@ -215,20 +215,36 @@ const ACTIVITIES = [
     blurb: "Journal club, teaching, abstract, QI, research.",
   },
   {
-    id: "wellness_challenge",
-    label: "Wellness quest",
+    id: "wellness_event",
+    label: "Wellness / community",
     points: 3,
+    icon: "💚",
+    blurb: "Generic wellness or service: Shubitz/CUP shift, group self-care, community engagement, service project, or other wholesome human activity.",
+    requiresNote: true,
+  },
+  {
+    id: "wellness_challenge",
+    label: "Monthly wellness quest",
+    points: 5,
     icon: "🌵",
-    blurb: "This rotation's wellness challenge.",
+    blurb: "This month's official wellness challenge.",
     challenge: "wellness",
   },
   {
     id: "photo_challenge",
-    label: "Photo quest",
+    label: "Monthly photo quest",
     points: 3,
     icon: "📸",
-    blurb: "This rotation's photo challenge.",
+    blurb: "This month's official photo challenge.",
     challenge: "photo",
+  },
+  {
+    id: "optional_quest",
+    label: "Optional quest / bounty",
+    points: 5,
+    icon: "🎯",
+    blurb: "Chief-posted optional wellness/photo quest, bounty, or one-off side mission. Worth 5 points unless chiefs say otherwise.",
+    requiresNote: true,
   },
   {
     id: "big_challenge",
@@ -1702,7 +1718,7 @@ function EarnTab(props) {
   useEffect(function saveName() { if (me) rememberName(me.name); }, [me]);
 
   const bountyActivity = bounty ? {
-    id: "bounty", label: "BOUNTY", points: Number(bounty.points) || 5, icon: "🔥",
+    id: "bounty", label: "OPTIONAL QUEST", points: Number(bounty.points) || 5, icon: "🎯",
     blurb: bounty.title + (bounty.endDate ? " · closes " + bounty.endDate : ""),
   } : null;
   const allActivities = bountyActivity ? [bountyActivity].concat(ACTIVITIES) : ACTIVITIES;
@@ -1766,6 +1782,7 @@ function EarnTab(props) {
       return "";
     }
     if (isPointsRequest && !note.trim()) return "Tell us why you're requesting points";
+    if (activity && activity.requiresNote && !note.trim()) return activity.id === "optional_quest" ? "Tell us which optional quest/bounty you completed" : "Tell us what wellness/community thing you did";
     if (!isPointsRequest && !photoFile) return "Snap the photo evidence";
     return "";
   })();
@@ -1807,6 +1824,8 @@ function EarnTab(props) {
           activityId: activity.id,
           activity: activity.id === "big_challenge" ? "Big Tucson quest: " + bigQuest
             : activity.id === "bounty" ? "Bounty: " + (bounty ? bounty.title : "")
+            : activity.id === "optional_quest" ? "Optional quest / bounty: " + note.trim()
+            : activity.id === "wellness_event" ? "Wellness / community: " + note.trim()
             : activity.id === "points_request" ? "Points request: " + effectivePoints + " pts requested"
             : liveChallenge ? activity.label + ": " + liveChallenge.title
             : activity.label,
@@ -1848,7 +1867,7 @@ function EarnTab(props) {
       )}
       {bounty && (
         <div className="pom-bounty-banner">
-          🔥 <strong>BOUNTY LIVE:</strong> {bounty.title} · <span className="pom-bounty-pts">{bounty.points} pts</span>{bounty.endDate ? " · closes " + bounty.endDate : ""}
+          🎯 <strong>OPTIONAL QUEST LIVE:</strong> {bounty.title} · <span className="pom-bounty-pts">{bounty.points} pts</span>{bounty.endDate ? " · closes " + bounty.endDate : ""}
           {bounty.note && <span className="pom-bounty-note">{bounty.note}</span>}
         </div>
       )}
@@ -1914,7 +1933,9 @@ function EarnTab(props) {
             <ul>
               <li><strong>Group hang / group exercise:</strong> 2+ people, photo evidence, everyone tagged gets points for their own house.</li>
               <li><strong>Academic flex:</strong> teaching, journal club, QI, research, abstracts, or other resident-brain nourishment.</li>
-              <li><strong>Wellness / photo quests:</strong> whatever challenge the chiefs have live that block.</li>
+              <li><strong>Wellness / community:</strong> Shubitz or CUP shifts, group self-care, service, community engagement, or other real-life wellness. Add a note so chiefs know what happened.</li>
+              <li><strong>Monthly wellness / photo quests:</strong> whatever challenge the chiefs have live that block.</li>
+              <li><strong>Optional quest / bounty:</strong> chief-posted side missions that do not fit the monthly cards. Default is 5 points.</li>
               <li><strong>Big Tucson quest:</strong> higher-effort desert side quests, summits, Loop epics, and other lore-worthy activities.</li>
               <li><strong>IM All-Star:</strong> nominate someone who went above and beyond. The <em>person submitting the nomination</em> gets 2 points; the nominee gets the shout-out and monthly prize eligibility.</li>
             </ul>
@@ -2010,7 +2031,7 @@ function EarnTab(props) {
           {!isShout && (
             <input
               className="pom-input"
-              placeholder={isPointsRequest ? "Required: why should chiefs award these points?" : "Optional note (where, what, lore…)"}
+              placeholder={isPointsRequest ? "Required: why should chiefs award these points?" : activity && activity.id === "optional_quest" ? "Required: which optional quest/bounty did you complete?" : activity && activity.id === "wellness_event" ? "Required: Shubitz/CUP, group self-care, community engagement, service, etc." : "Optional note (where, what, lore…)"}
               value={note}
               onChange={function onNote(e) { setNote(e.target.value); }}
             />
@@ -2324,10 +2345,11 @@ function ChiefTab() {
   // Challenge state
   const [chType, setChType] = useState("wellness");
   const [chTitle, setChTitle] = useState("");
-  const [chPoints, setChPoints] = useState(3);
+  const [chPoints, setChPoints] = useState(5);
   const [chEnd, setChEnd] = useState("");
   const [chNote, setChNote] = useState("");
   const [chMsg, setChMsg] = useState("");
+  const [chBusy, setChBusy] = useState(false);
 
   // Challenge Bank picker
   const [bank, setBank] = useState(LOCAL_CHALLENGE_BANK);
@@ -2386,12 +2408,25 @@ function ChiefTab() {
     return list;
   })();
 
+  function defaultQuestPointsForType(type) {
+    return type === "photo" ? 3 : 5;
+  }
+
+  function bankPointsForQuest(q) {
+    if (!q) return defaultQuestPointsForType(chType);
+    const section = String(q.section || "");
+    // Generic optional/featured quests should feel different from the monthly photo contest:
+    // default them to 5 points unless the chief intentionally edits the stepper.
+    if (section === "Featured Quest Pool" || section === "Alternates") return 5;
+    return Number(q.points) || defaultQuestPointsForType(chType);
+  }
+
   function pickFromBank(index) {
     setBankPick(index);
     const q = bankOptions[Number(index)];
     if (!q) return;
     setChTitle(q.title);
-    setChPoints(q.points || 3);
+    setChPoints(bankPointsForQuest(q));
     setChNote(q.note || "");
     setBankCopy(q.launchCopy || "");
     setBankMsg((q.month ? q.section + " · " + q.month : q.section) + (q.evidence ? " · " + q.evidence : ""));
@@ -2469,21 +2504,50 @@ function ChiefTab() {
   }
 
   async function setChallenge() {
+    if (chBusy) return;
     if (!chTitle.trim()) { setChMsg("Give the quest a title."); return; }
-    await postToBackend({
-      action: "setChallenge",
-      chief: chiefName,
-      pass: chiefPass,
-      type: chType,
-      title: chTitle.trim(),
-      points: Number(chPoints) || 3,
-      endDate: chEnd,
-      note: chNote.trim(),
-    });
-    setChMsg("Quest set: " + chTitle + " (" + chPoints + " pts). It goes live for residents on their next load." + (bankCopy ? " Launch copy is ready below — paste it in the group chat." : ""));
-    setChTitle("");
-    setChNote("");
-    setBankPick("");
+    setChBusy(true);
+    setChMsg("Saving quest…");
+    const cleanTitle = chTitle.trim();
+    const cleanNote = chNote.trim();
+    const cleanPoints = Number(chPoints) || defaultQuestPointsForType(chType);
+    try {
+      // Keep the original backend contract, but include common aliases so older/newer
+      // Apps Script versions still recognize the quest rotation payload.
+      await postToBackend({
+        action: "setChallenge",
+        actionAlias: "setQuest",
+        chief: chiefName,
+        chiefName: chiefName,
+        pass: chiefPass,
+        password: chiefPass,
+        type: chType,
+        questType: chType,
+        challengeType: chType,
+        category: chType,
+        title: cleanTitle,
+        challengeTitle: cleanTitle,
+        points: cleanPoints,
+        pointValue: cleanPoints,
+        endDate: chEnd,
+        end: chEnd,
+        expires: chEnd,
+        expiresOn: chEnd,
+        note: cleanNote,
+        notes: cleanNote,
+        description: cleanNote,
+      });
+      setChMsg("Quest set: " + cleanTitle + " (" + cleanPoints + " pts). It goes live for residents on their next load." + (bankCopy ? " Launch copy is ready below — paste it in the group chat." : ""));
+      setChTitle("");
+      setChNote("");
+      setBankPick("");
+      setBankCopy("");
+      setChPoints(defaultQuestPointsForType(chType));
+    } catch (e) {
+      setChMsg("Quest did not save — check connection/backend deployment, then try again.");
+    } finally {
+      setChBusy(false);
+    }
   }
 
   async function postAnnouncement() {
@@ -2598,17 +2662,17 @@ function ChiefTab() {
 
       <section className="pom-card">
         <h2 className="pom-h2">Rotate the quests</h2>
-        <p className="pom-hint">Sets the wellness or photo challenge every resident sees on the Earn tab. Easiest way to edit: just post a new one here — the latest unexpired quest wins automatically, so you never need to delete the old rows.</p>
-        <select className="pom-input" value={chType} onChange={function onT(e) { setChType(e.target.value); setBankPick(""); setBankCopy(""); setBankMsg(""); }}>
-          <option value="wellness">🌵 Wellness quest</option>
-          <option value="photo">📸 Photo quest</option>
-          <option value="bounty">🔥 Bounty (limited-time, big banner)</option>
+        <p className="pom-hint">Sets the monthly wellness quest, monthly photo quest, or optional quest/bounty residents see on the Earn tab. Optional quests default to 5 points; monthly photo quests can stay at 3 unless you change the stepper.</p>
+        <select className="pom-input" value={chType} onChange={function onT(e) { const nextType = e.target.value; setChType(nextType); setChPoints(defaultQuestPointsForType(nextType)); setBankPick(""); setBankCopy(""); setBankMsg(""); }}>
+          <option value="wellness">🌵 Monthly wellness quest</option>
+          <option value="photo">📸 Monthly photo quest</option>
+          <option value="bounty">🎯 Optional quest / bounty</option>
         </select>
         {bankOptions.length > 0 && (
           <select className="pom-input pom-bank-select" value={bankPick} onChange={function onPick(e) { pickFromBank(e.target.value); }}>
             <option value="">📚 Pick from the Challenge Bank ({bankOptions.length})…</option>
             {bankOptions.map(function opt(q, i) {
-              return <option key={i} value={i}>{(q.section ? q.section + " · " : "") + (q.month ? q.month + " — " : "") + q.title + " · " + q.points + " pts"}</option>;
+              return <option key={i} value={i}>{(q.section ? q.section + " · " : "") + (q.month ? q.month + " — " : "") + q.title + " · " + bankPointsForQuest(q) + " pts"}</option>;
             })}
           </select>
         )}
@@ -2621,7 +2685,7 @@ function ChiefTab() {
         </div>
         <label className="pom-hint" htmlFor="pom-ch-end">Quest ends (optional)</label>
         <input id="pom-ch-end" className="pom-input" type="date" value={chEnd} onChange={function onE(e) { setChEnd(e.target.value); }} />
-        <button type="button" className="pom-btn-primary" onClick={setChallenge}>Set the quest</button>
+        <button type="button" className="pom-btn-primary" onClick={setChallenge} disabled={chBusy}>{chBusy ? "Saving…" : "Set the quest"}</button>
         {bankCopy && (
           <div className="pom-launchcopy">
             <span>📣 {bankCopy}</span>
@@ -2863,8 +2927,12 @@ body::before {
   padding: 9px 18px;
   text-shadow: 0 0 8px rgba(47,238,104,0.72);
 }
-.pom-ticker-cactus {
-  display: none;
+
+@media (pointer: fine) {
+  .pom-ticker,
+  .pom-ticker * {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ctext x='4' y='25' font-size='25'%3E%F0%9F%8C%B5%3C/text%3E%3C/svg%3E") 9 4, pointer;
+  }
 }
 @keyframes pom-ticker-scroll {
   from { transform: translateX(0); }
@@ -2877,29 +2945,6 @@ body::before {
   box-shadow: 3px 3px 0 var(--ink); text-transform: uppercase; letter-spacing: 0.02em;
 }
 .pom-webmaster:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
-@media (min-width: 760px) {
-  .pom-ticker-cactus {
-    display: flex;
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: 2px solid var(--ink);
-    border-radius: 999px;
-    background: var(--gold);
-    box-shadow: 2px 2px 0 var(--ink);
-    font-size: 20px;
-    line-height: 1;
-  }
-  .pom-ticker-track {
-    padding-left: 58px;
-  }
-}
 .pom-dispatch {
   margin: 0 0 14px; padding: 12px 14px; border: 3px solid var(--ink); border-radius: 16px;
   background: linear-gradient(135deg, #FFF3BF 0%, #FFE8CC 100%); box-shadow: 4px 4px 0 rgba(31,27,22,0.9);
@@ -3234,7 +3279,6 @@ body[data-pom-theme="retro"] .pom-kicker { font-family: 'Courier New', monospace
 body[data-pom-theme="retro"] .pom-tag { font-family: 'Courier New', monospace; font-weight: 700; }
 body[data-pom-theme="retro"] .pom-ticker { background: #000080; border-radius: 0; }
 body[data-pom-theme="retro"] .pom-ticker-track span { color: #00FF66; font-family: 'Courier New', monospace; }
-body[data-pom-theme="retro"] .pom-ticker-cactus { background: #FFEB3B; }
 
 .pom-counterbar {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin-top: 2px;
@@ -3349,7 +3393,6 @@ export default function PointOMatic() {
         <h1 className="pom-title">POINT-O-MATIC</h1>
         <p className="pom-tag">5 Houses · 1 Program · 1 Big Honkin' Competition</p>
         <div className="pom-ticker" aria-label="Point-O-Matic ticker">
-          <div className="pom-ticker-cactus" aria-hidden="true">🌵</div>
           <div className="pom-ticker-track">
             <span>★ WELCOME RESIDENTS AND FACULTY ★ LOG YOUR POINTS ★ DO COOL STUFF ★ TOUCH GRASS ★ BE WELL ★&nbsp;</span>
             <span aria-hidden="true">★ WELCOME RESIDENTS AND FACULTY ★ LOG YOUR POINTS ★ DO COOL STUFF ★ TOUCH GRASS ★ BE WELL ★&nbsp;</span>
