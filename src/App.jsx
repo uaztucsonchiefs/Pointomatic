@@ -269,9 +269,1187 @@ const BIG_QUESTS = [
 
 // Shown until the live challenges load from the Sheet (chiefs rotate them in the Chief Lair).
 const FALLBACK_CHALLENGES = {
-  wellness: { title: "Hydrate or die-drate — log a 3-day water streak", points: 3, endDate: "" },
-  photo: { title: "Golden hour: catch a Tucson sunset on camera", points: 3, endDate: "" },
+  wellness: {
+    title: "Motto Motto Medicine — house mottos + meet your interns",
+    points: 5,
+    endDate: "",
+    note: "Proof: House motto/logo photo + photo of something fun with interns, inside or outside the hospital · Kick off the year: build house identity and adopt your interns early.",
+  },
+  photo: {
+    title: "House crest reveal: motto/logo + at least 3 house humans",
+    points: 3,
+    endDate: "",
+    note: "Proof: Photo required · Recovered legacy launch challenge — pairs with Motto Motto Medicine.",
+  },
 };
+
+// Local Challenge Bank — loaded from the chief-provided master list.
+// The backend can still override this via action=questLibrary, but this keeps
+// Chief Lair useful even if the Sheet library endpoint is empty/offline.
+const LOCAL_CHALLENGE_BANK = {
+  "wellness": [
+    {
+      "section": "Monthly Wellness",
+      "month": "July · Housewarming Party",
+      "type": "wellness",
+      "title": "Motto Motto Medicine — house mottos + meet your interns",
+      "points": 5,
+      "evidence": "House motto/logo photo + photo of something fun with interns, inside or outside the hospital",
+      "description": "Kick off the year: build house identity and adopt your interns early.",
+      "note": "Proof: House motto/logo photo + photo of something fun with interns, inside or outside the hospital · Kick off the year: build house identity and adopt your interns early.",
+      "launchCopy": "New year, new houses. Make a motto, meet your interns, collect 5 points."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "August · Hydrate or Die-drate",
+      "type": "wellness",
+      "title": "Beat the Heat Step Stampede — cumulative house steps",
+      "points": 5,
+      "evidence": "Step screenshot or walk photo",
+      "description": "Cumulative house steps; every walk counts.",
+      "note": "Proof: Step screenshot or walk photo · Cumulative house steps; every walk counts.",
+      "launchCopy": "It's 108 out. Walk anyway (before 7 AM). The Stampede is on."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "September · Tiny Teaching, Big Feelings",
+      "type": "wellness",
+      "title": "Teach Me Something Good — one pearl, chalk talk, article, or mini teaching moment",
+      "points": 5,
+      "evidence": "Photo of the board/moment or short note",
+      "description": "Any teaching counts: pearls, chalk talks, articles, mini-moments.",
+      "note": "Proof: Photo of the board/moment or short note · Any teaching counts: pearls, chalk talks, articles, mini-moments.",
+      "launchCopy": "Teach one thing. Any thing. The board is your canvas."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "October · Boo-cson",
+      "type": "wellness",
+      "title": "Haunted Tucson Field Trip — visit a haunted or historic Tucson spot",
+      "points": 5,
+      "evidence": "Photo at the spot",
+      "description": "Hotel Congress, Fox Theatre, old barrios — haunted or historic both count.",
+      "note": "Proof: Photo at the spot · Hotel Congress, Fox Theatre, old barrios — haunted or historic both count.",
+      "launchCopy": "Tucson is old and haunted. Go say hi."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "November · Thanks, I Needed That",
+      "type": "wellness",
+      "title": "Gratitude + Service Combo Meal — post one gratitude note and complete one service/community action",
+      "points": 5,
+      "evidence": "Photo or note of both halves",
+      "description": "Both halves required: one gratitude note + one service action.",
+      "note": "Proof: Photo or note of both halves · Both halves required: one gratitude note + one service action.",
+      "launchCopy": "One thank-you, one good deed. Combo meal pricing: 5 points."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "December · Desert Claus",
+      "type": "wellness",
+      "title": "Holiday Giving Drive — clothing, food, gifts, or patient/community support",
+      "points": 5,
+      "evidence": "Photo of the give",
+      "description": "Any giving counts: drives, gifts, patient/community support.",
+      "note": "Proof: Photo of the give · Any giving counts: drives, gifts, patient/community support.",
+      "launchCopy": "Desert Claus is watching. Give something, log it."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "January · New Year, Same Pager",
+      "type": "wellness",
+      "title": "Fresh Start Bingo — try a new wellness activity",
+      "points": 5,
+      "evidence": "Photo of the new thing",
+      "description": "New means new-to-you: climbing gym, birding, pottery, whatever.",
+      "note": "Proof: Photo of the new thing · New means new-to-you: climbing gym, birding, pottery, whatever.",
+      "launchCopy": "Same pager, new you. Try one new wellness thing."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "February · Pal-entines",
+      "type": "wellness",
+      "title": "Connection Quest — check in on 5 colleagues",
+      "points": 5,
+      "evidence": "Short note or screenshot",
+      "description": "Five real check-ins, especially people outside your usual orbit.",
+      "note": "Proof: Short note or screenshot · Five real check-ins, especially people outside your usual orbit.",
+      "launchCopy": "Forget valentines — send pal-entines. Five check-ins, five points."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "March · Peak Freaks",
+      "type": "wellness",
+      "title": "Peak Bagging Month — summit, hike, or high-effort outdoor adventure",
+      "points": 5,
+      "evidence": "Summit/trail photo",
+      "description": "Any summit or high-effort outdoor adventure counts.",
+      "note": "Proof: Summit/trail photo · Any summit or high-effort outdoor adventure counts.",
+      "launchCopy": "Peak season. Go get one."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "April · Spoke Signals",
+      "type": "wellness",
+      "title": "Bike Month — house miles by bike, commute, Loop ride, or spin",
+      "points": 5,
+      "evidence": "Ride photo or screenshot",
+      "description": "Commutes, Loop rides, and spin classes all count toward house miles.",
+      "note": "Proof: Ride photo or screenshot · Commutes, Loop rides, and spin classes all count toward house miles.",
+      "launchCopy": "April is Bike Month. Every mile is a spoke signal."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "May · Brain Deserves Snacks",
+      "type": "wellness",
+      "title": "Mental Health Choose-Your-Own-Adventure",
+      "points": 5,
+      "evidence": "Photo or short note",
+      "description": "Pick your own restorative thing: therapy walk, nap, hobby, boundary.",
+      "note": "Proof: Photo or short note · Pick your own restorative thing: therapy walk, nap, hobby, boundary.",
+      "launchCopy": "Your brain deserves snacks. Choose your own adventure and log it."
+    },
+    {
+      "section": "Monthly Wellness",
+      "month": "June · Sunrise Survival Club",
+      "type": "wellness",
+      "title": "Summer Heat Challenge — sunrise workouts + early hikes",
+      "points": 5,
+      "evidence": "Timestamped sunrise proof",
+      "description": "Beat the heat: workouts and hikes finished early.",
+      "note": "Proof: Timestamped sunrise proof · Beat the heat: workouts and hikes finished early.",
+      "launchCopy": "The Sunrise Survival Club is now boarding. 5 AM alarms build character."
+    },
+    {
+      "section": "Alternates",
+      "month": "July",
+      "type": "wellness",
+      "title": "Touch Grass",
+      "points": 3,
+      "evidence": "Photo preferred; short note okay",
+      "description": "Spend 30+ minutes outside with another resident.",
+      "note": "Proof: Photo preferred; short note okay · Spend 30+ minutes outside with another resident.",
+      "launchCopy": "Log it. Leave the fluorescent lights. Touch grass."
+    },
+    {
+      "section": "Alternates",
+      "month": "July",
+      "type": "wellness",
+      "title": "Monsoon Watch Society",
+      "points": 3,
+      "evidence": "Storm photo from somewhere dry",
+      "description": "Catch a storm rolling in and hydrate like it's your job. Lightning safety is self-explanatory.",
+      "note": "Proof: Storm photo from somewhere dry · Catch a storm rolling in and hydrate like it's your job. Lightning safety is self-explanatory.",
+      "launchCopy": "Monsoon szn. Watch responsibly."
+    },
+    {
+      "section": "Alternates",
+      "month": "August",
+      "type": "wellness",
+      "title": "Hydration Streak",
+      "points": 3,
+      "evidence": "Photo preferred; short note okay",
+      "description": "Three-day hydration streak or group water accountability.",
+      "note": "Proof: Photo preferred; short note okay · Three-day hydration streak or group water accountability.",
+      "launchCopy": "Water is free. Nephrology is watching."
+    },
+    {
+      "section": "Alternates",
+      "month": "September",
+      "type": "wellness",
+      "title": "Feed the Workroom",
+      "points": 3,
+      "evidence": "Photo preferred",
+      "description": "Bring or coordinate snacks/coffee for a team or workroom.",
+      "note": "Proof: Photo preferred · Bring or coordinate snacks/coffee for a team or workroom.",
+      "launchCopy": "Snack-based morale intervention now live."
+    },
+    {
+      "section": "Alternates",
+      "month": "September",
+      "type": "wellness",
+      "title": "Lemmon Aid",
+      "points": 3,
+      "evidence": "Photo preferred",
+      "description": "Escape up the Catalina Highway with housemates. The Cookie Cabin counts as wellness.",
+      "note": "Proof: Photo preferred · Escape up the Catalina Highway with housemates. The Cookie Cabin counts as wellness.",
+      "launchCopy": "Lemmon Aid: elevation is medicine."
+    },
+    {
+      "section": "Alternates",
+      "month": "October",
+      "type": "wellness",
+      "title": "Post-call Recovery",
+      "points": 3,
+      "evidence": "Short note required",
+      "description": "Do something restorative after nights/long call and explain why it counts.",
+      "note": "Proof: Short note required · Do something restorative after nights/long call and explain why it counts.",
+      "launchCopy": "Recovery is a clinical skill. Log the reset."
+    },
+    {
+      "section": "Alternates",
+      "month": "October",
+      "type": "wellness",
+      "title": "Tucson Meet Yourself",
+      "points": 3,
+      "evidence": "Photo preferred",
+      "description": "Eat something you can't pronounce at the folk festival.",
+      "note": "Proof: Photo preferred · Eat something you can't pronounce at the folk festival.",
+      "launchCopy": "TMY: bonus lore for the most ambitious food line."
+    },
+    {
+      "section": "Alternates",
+      "month": "November",
+      "type": "wellness",
+      "title": "Gratitude Ping",
+      "points": 3,
+      "evidence": "Short note required",
+      "description": "Send a genuine thank-you or shout-out to someone who helped.",
+      "note": "Proof: Short note required · Send a genuine thank-you or shout-out to someone who helped.",
+      "launchCopy": "Say the quiet good part out loud."
+    },
+    {
+      "section": "Alternates",
+      "month": "November",
+      "type": "wellness",
+      "title": "All Souls & Gratitude",
+      "points": 3,
+      "evidence": "Respectful photos only",
+      "description": "Attend the All Souls Procession or host a gratitude dinner with housemates.",
+      "note": "Proof: Respectful photos only · Attend the All Souls Procession or host a gratitude dinner with housemates.",
+      "launchCopy": "All Souls weekend: show up, reflect, log it."
+    },
+    {
+      "section": "Alternates",
+      "month": "December",
+      "type": "wellness",
+      "title": "Warm Handoff",
+      "points": 3,
+      "evidence": "Short note required",
+      "description": "Recognize someone for helping with cross-cover, signout, teaching, or kindness.",
+      "note": "Proof: Short note required · Recognize someone for helping with cross-cover, signout, teaching, or kindness.",
+      "launchCopy": "Warm handoffs count."
+    },
+    {
+      "section": "Alternates",
+      "month": "December",
+      "type": "wellness",
+      "title": "Winterhaven Wander",
+      "points": 3,
+      "evidence": "Photo preferred",
+      "description": "Walk the Festival of Lights, or run a tamale crawl — dealer's choice.",
+      "note": "Proof: Photo preferred · Walk the Festival of Lights, or run a tamale crawl — dealer's choice.",
+      "launchCopy": "Tamale count is not capped. Points are."
+    },
+    {
+      "section": "Alternates",
+      "month": "January",
+      "type": "wellness",
+      "title": "Step Into It",
+      "points": 3,
+      "evidence": "Photo preferred",
+      "description": "Group walk/stairs/gym/yoga/climb/pickleball/movement.",
+      "note": "Proof: Photo preferred · Group walk/stairs/gym/yoga/climb/pickleball/movement.",
+      "launchCopy": "Move the body. Free the pager-brain."
+    },
+    {
+      "section": "Alternates",
+      "month": "February",
+      "type": "wellness",
+      "title": "Kindness Consult",
+      "points": 3,
+      "evidence": "Short note required",
+      "description": "Do something kind for a teammate and explain what happened.",
+      "note": "Proof: Short note required · Do something kind for a teammate and explain what happened.",
+      "launchCopy": "Consult kindness. No prior auth needed."
+    },
+    {
+      "section": "Alternates",
+      "month": "February",
+      "type": "wellness",
+      "title": "Gem Show Expedition",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Find the weirdest rock in the entire show. Rodeo Days outings also count.",
+      "note": "Proof: Photo required · Find the weirdest rock in the entire show. Rodeo Days outings also count.",
+      "launchCopy": "Weirdest rock wins. Yeehaw responsibly."
+    },
+    {
+      "section": "Alternates",
+      "month": "March",
+      "type": "wellness",
+      "title": "Spring Reset",
+      "points": 3,
+      "evidence": "Photo preferred",
+      "description": "Outdoor reset with a co-resident.",
+      "note": "Proof: Photo preferred · Outdoor reset with a co-resident.",
+      "launchCopy": "The desert is open. Go be a person."
+    },
+    {
+      "section": "Alternates",
+      "month": "March",
+      "type": "wellness",
+      "title": "Festival of Books & Blooms",
+      "points": 3,
+      "evidence": "Photo preferred",
+      "description": "Campus book festival or a wildflower walk. Poppy season waits for no one.",
+      "note": "Proof: Photo preferred · Campus book festival or a wildflower walk. Poppy season waits for no one.",
+      "launchCopy": "Books or blooms — pick your reset."
+    },
+    {
+      "section": "Alternates",
+      "month": "April",
+      "type": "wellness",
+      "title": "Desert Miles",
+      "points": 3,
+      "evidence": "Photo preferred",
+      "description": "Group hike, trail run, bike, climb, or intentional outside movement.",
+      "note": "Proof: Photo preferred · Group hike, trail run, bike, climb, or intentional outside movement.",
+      "launchCopy": "Mileage counts. Lore counts more."
+    },
+    {
+      "section": "Alternates",
+      "month": "April",
+      "type": "wellness",
+      "title": "Desert Bloom Challenge",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Document wildflowers, visit Biosphere 2, or catch early blooms. (Original House Cup calendar.)",
+      "note": "Proof: Photo required · Document wildflowers, visit Biosphere 2, or catch early blooms. (Original House Cup calendar.)",
+      "launchCopy": "Bloom watch is on."
+    },
+    {
+      "section": "Alternates",
+      "month": "May",
+      "type": "wellness",
+      "title": "Teach One Thing",
+      "points": 3,
+      "evidence": "Photo or note",
+      "description": "Teach a pearl, share a paper, or run a mini chalk talk.",
+      "note": "Proof: Photo or note · Teach a pearl, share a paper, or run a mini chalk talk.",
+      "launchCopy": "One pearl. One point-able moment."
+    },
+    {
+      "section": "Alternates",
+      "month": "May",
+      "type": "wellness",
+      "title": "Saguaro Bloom Bingo",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Find a crown in bloom — they only do this once a year.",
+      "note": "Proof: Photo required · Find a crown in bloom — they only do this once a year.",
+      "launchCopy": "Crown spotting season. Go."
+    },
+    {
+      "section": "Alternates",
+      "month": "June",
+      "type": "wellness",
+      "title": "Pass the Torch",
+      "points": 3,
+      "evidence": "Photo or note",
+      "description": "Advice, teaching, welcome, or support for incoming interns/new seniors.",
+      "note": "Proof: Photo or note · Advice, teaching, welcome, or support for incoming interns/new seniors.",
+      "launchCopy": "Make July less feral for someone."
+    },
+    {
+      "section": "Alternates",
+      "month": "June",
+      "type": "wellness",
+      "title": "Saguaro Harvest Season",
+      "points": 3,
+      "evidence": "Photo preferred",
+      "description": "Harvest event, sunrise hike, or dinner at a historic Tucson institution. (Original House Cup calendar.)",
+      "note": "Proof: Photo preferred · Harvest event, sunrise hike, or dinner at a historic Tucson institution. (Original House Cup calendar.)",
+      "launchCopy": "Harvest season: eat, hike, log."
+    }
+  ],
+  "photo": [
+    {
+      "section": "Monthly Photo",
+      "month": "July · Housewarming Party",
+      "type": "photo",
+      "title": "House crest reveal: motto/logo + at least 3 house humans",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Recovered legacy launch challenge — pairs with Motto Motto Medicine.",
+      "note": "Proof: Photo required · Recovered legacy launch challenge — pairs with Motto Motto Medicine.",
+      "launchCopy": "Reveal your crest. Minimum three house humans in frame."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "August · Hydrate or Die-drate",
+      "type": "photo",
+      "title": "Sweatiest wholesome step screenshot or desert-safe walk selfie",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Desert-safe means shade, water, and pre-9AM energy.",
+      "note": "Proof: Photo required · Desert-safe means shade, water, and pre-9AM energy.",
+      "launchCopy": "Show us the sweat. Wholesomely."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "September · Tiny Teaching, Big Feelings",
+      "type": "photo",
+      "title": "Best chalk-talk board / teaching pearl glamour shot",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Boards, diagrams, teaching moments — glamour angle encouraged.",
+      "note": "Proof: Photo required · Boards, diagrams, teaching moments — glamour angle encouraged.",
+      "launchCopy": "Chalk talk glamour shots due now."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "October · Boo-cson",
+      "type": "photo",
+      "title": "Spookiest Tucson photo that remains HR-safe",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Spooky but HR-safe. The bar is high, the liability is low.",
+      "note": "Proof: Photo required · Spooky but HR-safe. The bar is high, the liability is low.",
+      "launchCopy": "Scare us. Professionally."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "November · Thanks, I Needed That",
+      "type": "photo",
+      "title": "Most wholesome gratitude/service proof",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Document the good deed without violating anyone's privacy.",
+      "note": "Proof: Photo required · Document the good deed without violating anyone's privacy.",
+      "launchCopy": "Wholesome proof or it didn't happen."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "December · Desert Claus",
+      "type": "photo",
+      "title": "Most festive giving-drive evidence",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Festive giving documentation: drives, donations, deliveries.",
+      "note": "Proof: Photo required · Festive giving documentation: drives, donations, deliveries.",
+      "launchCopy": "Festive evidence, please."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "January · New Year, Same Pager",
+      "type": "photo",
+      "title": "New year, new coping mechanism",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Show us the new healthy coping mechanism in action.",
+      "note": "Proof: Photo required · Show us the new healthy coping mechanism in action.",
+      "launchCopy": "New coping mechanism just dropped. Pics required."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "February · Pal-entines",
+      "type": "photo",
+      "title": "Best colleague connection selfie or screenshot",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Connection caught on camera — selfies and screenshots both count.",
+      "note": "Proof: Photo required · Connection caught on camera — selfies and screenshots both count.",
+      "launchCopy": "Pal-entine selfies due by end of month."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "March · Peak Freaks",
+      "type": "photo",
+      "title": "Summit goblin glamour shot",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Peak photo, goblin energy, glamour execution.",
+      "note": "Proof: Photo required · Peak photo, goblin energy, glamour execution.",
+      "launchCopy": "Summit goblin season is open."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "April · Spoke Signals",
+      "type": "photo",
+      "title": "Best bike/Loop/spin proof",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Bikes, Loop scenery, spin class suffering — all valid.",
+      "note": "Proof: Photo required · Bikes, Loop scenery, spin class suffering — all valid.",
+      "launchCopy": "Wheels or it didn't happen."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "May · Brain Deserves Snacks",
+      "type": "photo",
+      "title": "Most peaceful non-PHI reset photo",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Peaceful reset moments only. Zero PHI, maximum serenity.",
+      "note": "Proof: Photo required · Peaceful reset moments only. Zero PHI, maximum serenity.",
+      "launchCopy": "Show us peace. No PHI."
+    },
+    {
+      "section": "Monthly Photo",
+      "month": "June · Sunrise Survival Club",
+      "type": "photo",
+      "title": "Best sunrise survival shot",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Sunrise + evidence you survived it.",
+      "note": "Proof: Photo required · Sunrise + evidence you survived it.",
+      "launchCopy": "Sunrise survival shots due before the heat wins."
+    },
+    {
+      "section": "Alternates",
+      "month": "July",
+      "type": "photo",
+      "title": "First Tucson Sunset",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Photo of a Tucson sunset with a resident/person/pet/water bottle cameo.",
+      "note": "Proof: Photo required · Photo of a Tucson sunset with a resident/person/pet/water bottle cameo.",
+      "launchCopy": "The sunset is undefeated. Prove you saw it."
+    },
+    {
+      "section": "Alternates",
+      "month": "August",
+      "type": "photo",
+      "title": "Hydration Vessel Flex",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Best ridiculous/beautiful/industrial-size water bottle photo.",
+      "note": "Proof: Photo required · Best ridiculous/beautiful/industrial-size water bottle photo.",
+      "launchCopy": "Show us the vessel."
+    },
+    {
+      "section": "Alternates",
+      "month": "September",
+      "type": "photo",
+      "title": "Snack Shrine",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Best workroom snack spread or team coffee run photo.",
+      "note": "Proof: Photo required · Best workroom snack spread or team coffee run photo.",
+      "launchCopy": "The snack shrine is open."
+    },
+    {
+      "section": "Alternates",
+      "month": "October",
+      "type": "photo",
+      "title": "Spooky Hospital Fit",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "PG-safe seasonal photo: pumpkins, socks, badge reel, workroom decor.",
+      "note": "Proof: Photo required · PG-safe seasonal photo: pumpkins, socks, badge reel, workroom decor.",
+      "launchCopy": "Spooky but HR-safe."
+    },
+    {
+      "section": "Alternates",
+      "month": "November",
+      "type": "photo",
+      "title": "Unsung Hero",
+      "points": 3,
+      "evidence": "Photo required; no patient info",
+      "description": "Photo representing someone who made the day better; keep patient info out.",
+      "note": "Proof: Photo required; no patient info · Photo representing someone who made the day better; keep patient info out.",
+      "launchCopy": "Find the helper. Keep it HIPAA-clean."
+    },
+    {
+      "section": "Alternates",
+      "month": "December",
+      "type": "photo",
+      "title": "Cozy Workroom",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Best cozy/holiday-safe workroom or resident lounge photo.",
+      "note": "Proof: Photo required · Best cozy/holiday-safe workroom or resident lounge photo.",
+      "launchCopy": "Cozy counts."
+    },
+    {
+      "section": "Alternates",
+      "month": "January",
+      "type": "photo",
+      "title": "First Light",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Sunrise, early commute, coffee, or first-light desert photo.",
+      "note": "Proof: Photo required · Sunrise, early commute, coffee, or first-light desert photo.",
+      "launchCopy": "Post-call sunrise? Emotionally billable."
+    },
+    {
+      "section": "Alternates",
+      "month": "February",
+      "type": "photo",
+      "title": "Heart of the Program",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Wholesome resident teamwork or heart-themed safe visual.",
+      "note": "Proof: Photo required · Wholesome resident teamwork or heart-themed safe visual.",
+      "launchCopy": "Show us the heart of IM."
+    },
+    {
+      "section": "Alternates",
+      "month": "March",
+      "type": "photo",
+      "title": "Spring Training",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Best baseball/spring/Tucson outdoor photo.",
+      "note": "Proof: Photo required · Best baseball/spring/Tucson outdoor photo.",
+      "launchCopy": "Spring is a clinical intervention."
+    },
+    {
+      "section": "Alternates",
+      "month": "April",
+      "type": "photo",
+      "title": "Summit Evidence",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Photo from A Mountain, Tumamoc, Sabino, Wasson, Lemmon, or any trail.",
+      "note": "Proof: Photo required · Photo from A Mountain, Tumamoc, Sabino, Wasson, Lemmon, or any trail.",
+      "launchCopy": "Summit or it didn't happen."
+    },
+    {
+      "section": "Alternates",
+      "month": "May",
+      "type": "photo",
+      "title": "Teaching in the Wild",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Whiteboard, chalk talk, team learning, journal club, or safe teaching scene.",
+      "note": "Proof: Photo required · Whiteboard, chalk talk, team learning, journal club, or safe teaching scene.",
+      "launchCopy": "Catch someone teaching."
+    },
+    {
+      "section": "Alternates",
+      "month": "June",
+      "type": "photo",
+      "title": "Legacy Photo",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Best class/team/senior sendoff photo.",
+      "note": "Proof: Photo required · Best class/team/senior sendoff photo.",
+      "launchCopy": "Document the lore."
+    },
+    {
+      "section": "Alternates",
+      "month": "Any",
+      "type": "photo",
+      "title": "Your house's mountain range from a brand-new angle",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Catalina, Rincon, Santa Rita, Tortolita, or Tucson — go find yours.",
+      "note": "Proof: Photo required · Catalina, Rincon, Santa Rita, Tortolita, or Tucson — go find yours.",
+      "launchCopy": "Show us your range like we've never seen it."
+    },
+    {
+      "section": "Alternates",
+      "month": "Any",
+      "type": "photo",
+      "title": "White coat in the wild",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "Scrubs somewhere scrubs have never been. Keep it HIPAA-proof and HR-proof.",
+      "note": "Proof: Photo required · Scrubs somewhere scrubs have never been. Keep it HIPAA-proof and HR-proof.",
+      "launchCopy": "White coat, wrong habitat. Go."
+    },
+    {
+      "section": "Alternates",
+      "month": "Any",
+      "type": "photo",
+      "title": "Two houses, one frame",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "A cross-house hang caught on camera.",
+      "note": "Proof: Photo required · A cross-house hang caught on camera.",
+      "launchCopy": "Fraternizing with the enemy is encouraged."
+    }
+  ],
+  "bounty": [
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Find the most judgmental saguaro",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Sunrise before signout",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Best Tucson mural walk",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Touch grass with three people from your house",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Sabino sunrise crew",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Sonoran hot dog + decompression walk",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "A Mountain sunset photo",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "No-phone nature hour",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Bring joy to the team snack drop",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Write three gratitude notes",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Check in on five colleagues you do not know well",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Hydration hero shift",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Find the weirdest cactus in Tucson",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Farmers market produce quest",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Coffee walk with someone outside your usual crew",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Trail cleanup / leave-it-better mini mission",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "House picnic or potluck",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Desert Museum or botanical garden reset",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Meet your interns for coffee, snacks, or a hospital walk",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Ask an intern what would make this month easier, then do one small thing",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Text someone post-call that you appreciate them",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Bring a ridiculous but useful snack to the workroom",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Make a team playlist for prerounds / charting / survival",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Take a walk with someone who looks like they need a reset",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Send one thank-you message to a nurse, MA, pharmacist, RT, or clinic staff member",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Make the call room slightly less cursed",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Teach one thing you wish someone had taught you earlier",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Organize a five-minute stretch break during a long day",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Do a kindness drive-by: coffee, snack, note, or errand for someone slammed",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Find a beautiful Tucson sky and document it for morale",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Have a real conversation with no work talk for ten minutes",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Make a mini survival guide for new interns",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Take a house photo that looks like an album cover",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Create a house motto, chant, handshake, or absolutely unnecessary ritual",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Host a tiny workroom celebration for no good reason",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Share one good thing from the week in your house chat",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Make an intern laugh during a hard shift",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Featured Quest Pool",
+      "month": "",
+      "type": "bounty",
+      "title": "Do something wholesome enough that it feels suspicious",
+      "points": 3,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": ""
+    },
+    {
+      "section": "Group Bounties",
+      "month": "",
+      "type": "bounty",
+      "title": "First house to get 8 people to the Gem Show",
+      "points": 15,
+      "evidence": "One group photo, eight identifiable humans",
+      "description": "Judged on arrival order. February energy.",
+      "note": "Proof: One group photo, eight identifiable humans · Judged on arrival order. February energy.",
+      "launchCopy": "The Gem Show bounty is LIVE: first house with 8 humans in one frame takes 15."
+    },
+    {
+      "section": "Group Bounties",
+      "month": "",
+      "type": "bounty",
+      "title": "Full house on A Mountain: one summit photo with 6+ housemates",
+      "points": 12,
+      "evidence": "Summit photo, 6+ housemates",
+      "description": "",
+      "note": "Proof: Summit photo, 6+ housemates",
+      "launchCopy": "Get your house up A Mountain. Six or more, one photo, twelve points."
+    },
+    {
+      "section": "Group Bounties",
+      "month": "",
+      "type": "bounty",
+      "title": "Eegee's flavor of the month: 5 housemates, 5 cups, 1 photo",
+      "points": 8,
+      "evidence": "Photo required",
+      "description": "",
+      "note": "Proof: Photo required",
+      "launchCopy": "Flavor of the month run: 5 cups, 1 photo, 8 points."
+    },
+    {
+      "section": "Group Bounties",
+      "month": "",
+      "type": "bounty",
+      "title": "Cross-Class Hang",
+      "points": 5,
+      "evidence": "Photo required",
+      "description": "Group hang with at least two classes represented.",
+      "note": "Proof: Photo required · Group hang with at least two classes represented.",
+      "launchCopy": "Mix the classes. Reduce the awkwardness."
+    },
+    {
+      "section": "Group Bounties",
+      "month": "",
+      "type": "bounty",
+      "title": "House-Selected Activity",
+      "points": 5,
+      "evidence": "Usually photo required",
+      "description": "Chief-selected activity of the week; residents complete it for bonus points.",
+      "note": "Proof: Usually photo required · Chief-selected activity of the week; residents complete it for bonus points.",
+      "launchCopy": "This week's house quest is live."
+    },
+    {
+      "section": "Group Bounties",
+      "month": "",
+      "type": "bounty",
+      "title": "Academic Flex Week",
+      "points": 5,
+      "evidence": "Photo or note",
+      "description": "Teaching, QI, journal club, paper discussion, abstract, conference prep.",
+      "note": "Proof: Photo or note · Teaching, QI, journal club, paper discussion, abstract, conference prep.",
+      "launchCopy": "Brains get points this week."
+    }
+  ]
+};
+
 
 const AWARD_PRESETS = ["Trivia W", "Kahoot crown", "Event MVP", "Chief's whim"];
 
@@ -1129,6 +2307,7 @@ function GloryTab() {
 function ChiefTab() {
   const [chiefName, setChiefName] = useState("");
   const [chiefPass, setChiefPass] = useState("");
+  const [chiefFieldsUnlocked, setChiefFieldsUnlocked] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [loginMsg, setLoginMsg] = useState("");
 
@@ -1151,7 +2330,7 @@ function ChiefTab() {
   const [chMsg, setChMsg] = useState("");
 
   // Challenge Bank picker
-  const [bank, setBank] = useState(null);
+  const [bank, setBank] = useState(LOCAL_CHALLENGE_BANK);
   const [bankPick, setBankPick] = useState("");
   const [bankCopy, setBankCopy] = useState("");
   const [bankMsg, setBankMsg] = useState("");
@@ -1186,8 +2365,13 @@ function ChiefTab() {
       setLoginMsg("");
       fetchSummary().then(function ok(json) { setShoutFeed((json && json.recentShoutouts) || []); }).catch(function quiet() {});
       chiefGet("questLibrary", chiefPass)
-        .then(function ok(json) { if (json && json.ok) setBank(json.library); })
-        .catch(function quiet() { setBankMsg("Challenge Bank didn't load — free-type works fine, or reload the lair."); });
+        .then(function ok(json) {
+          if (json && json.ok && json.library && (json.library.wellness || json.library.photo || json.library.bounty)) {
+            const counts = ["wellness", "photo", "bounty"].map(function count(k) { return (json.library[k] || []).length; });
+            if (counts.some(function has(n) { return n > 0; })) setBank(json.library);
+          }
+        })
+        .catch(function quiet() { setBankMsg("Using the built-in Challenge Bank — Sheet library did not load."); });
     } else setLoginMsg("Name or password doesn't match a chief. The password is the sacred one.");
   }
 
@@ -1210,7 +2394,7 @@ function ChiefTab() {
     setChPoints(q.points || 3);
     setChNote(q.note || "");
     setBankCopy(q.launchCopy || "");
-    setBankMsg(q.month ? q.section + " · " + q.month : q.section);
+    setBankMsg((q.month ? q.section + " · " + q.month : q.section) + (q.evidence ? " · " + q.evidence : ""));
   }
 
   function copyLaunchCopy() {
@@ -1321,8 +2505,44 @@ function ChiefTab() {
     return (
       <div className="pom-card pom-narrow">
         <h2 className="pom-h2">Secret Chief Lair</h2>
-        <input className="pom-input" placeholder="Name" value={chiefName} onChange={function onN(e) { setChiefName(e.target.value); }} autoComplete="off" />
-        <input className="pom-input" placeholder="get lost punk" type="password" value={chiefPass} onChange={function onP(e) { setChiefPass(e.target.value); }} onKeyDown={function onK(e) { if (e.key === "Enter") login(); }} />
+        <div className="pom-autofill-decoys" aria-hidden="true">
+          <input type="text" name="username" autoComplete="username" tabIndex={-1} />
+          <input type="password" name="password" autoComplete="current-password" tabIndex={-1} />
+        </div>
+        <input
+          className="pom-input"
+          name="pointomatic-chief-display-name"
+          placeholder="Name"
+          value={chiefName}
+          onChange={function onN(e) { setChiefName(e.target.value); }}
+          onPointerDown={function unlockChiefFields() { setChiefFieldsUnlocked(true); }}
+          onFocus={function unlockChiefFields() { setChiefFieldsUnlocked(true); }}
+          readOnly={!chiefFieldsUnlocked}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck="false"
+          data-lpignore="true"
+          data-1p-ignore="true"
+        />
+        <input
+          className="pom-input"
+          name="pointomatic-chief-not-a-saved-password"
+          placeholder="get lost punk"
+          type="password"
+          value={chiefPass}
+          onChange={function onP(e) { setChiefPass(e.target.value); }}
+          onKeyDown={function onK(e) { if (e.key === "Enter") login(); }}
+          onPointerDown={function unlockChiefFields() { setChiefFieldsUnlocked(true); }}
+          onFocus={function unlockChiefFields() { setChiefFieldsUnlocked(true); }}
+          readOnly={!chiefFieldsUnlocked}
+          autoComplete="new-password"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck="false"
+          data-lpignore="true"
+          data-1p-ignore="true"
+        />
         <button type="button" className="pom-btn-primary" onClick={login}>Enter the lair</button>
         {loginMsg && <p className="pom-error">{loginMsg}</p>}
       </div>
@@ -1388,7 +2608,7 @@ function ChiefTab() {
           <select className="pom-input pom-bank-select" value={bankPick} onChange={function onPick(e) { pickFromBank(e.target.value); }}>
             <option value="">📚 Pick from the Challenge Bank ({bankOptions.length})…</option>
             {bankOptions.map(function opt(q, i) {
-              return <option key={i} value={i}>{(q.month ? q.month + " — " : "") + q.title + " · " + q.points + " pts"}</option>;
+              return <option key={i} value={i}>{(q.section ? q.section + " · " : "") + (q.month ? q.month + " — " : "") + q.title + " · " + q.points + " pts"}</option>;
             })}
           </select>
         )}
@@ -1812,6 +3032,16 @@ body::before {
 .pom-squad-row .pom-input { margin-bottom: 0; }
 .pom-squad-chips { margin-top: 10px; }
 
+.pom-autofill-decoys {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  left: -9999px;
+}
+
 .pom-file-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
 .pom-photo-drop {
   display: block; text-align: center; border: 2px dashed var(--sunset); border-radius: 16px;
@@ -2117,7 +3347,7 @@ export default function PointOMatic() {
         </button>
         <div className="pom-kicker">UA IM House Cup</div>
         <h1 className="pom-title">POINT-O-MATIC</h1>
-        <p className="pom-tag">Welcome Residents · Log your points</p>
+        <p className="pom-tag">5 Houses · 1 Program · 1 Big Honkin' Competition</p>
         <div className="pom-ticker" aria-label="Point-O-Matic ticker">
           <div className="pom-ticker-cactus" aria-hidden="true">🌵</div>
           <div className="pom-ticker-track">
