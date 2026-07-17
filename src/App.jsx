@@ -1725,10 +1725,10 @@ async function fetchSummary(period, userName) {
 
   // Apps Script occasionally cold-starts or times out. Retry readable GETs, but
   // never accept its generic "backend alive" response as an empty leaderboard.
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     params.set("_", String(Date.now()) + "-" + attempt);
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timer = controller ? window.setTimeout(function abortSlowSummary() { controller.abort(); }, 12000) : null;
+    const timer = controller ? window.setTimeout(function abortSlowSummary() { controller.abort(); }, 25000) : null;
     try {
       const res = await fetch(APPS_SCRIPT_WEB_APP_URL + "?" + params.toString(), {
         method: "GET",
@@ -1743,12 +1743,38 @@ async function fetchSummary(period, userName) {
       return json;
     } catch (err) {
       lastError = err;
-      if (attempt < 2) await new Promise(function pause(resolve) { window.setTimeout(resolve, 500 * (attempt + 1)); });
+      if (attempt < 1) await new Promise(function pause(resolve) { window.setTimeout(resolve, 750); });
     } finally {
       if (timer) window.clearTimeout(timer);
     }
   }
   throw lastError || new Error("Summary request failed");
+}
+
+// Fast path for live quest cards. Backend v5.2 serves this from a short shared
+// cache without scanning Points, Votes, Photos, or Team. Older deployments fall
+// back to the full summary so frontend/backend updates can be deployed safely.
+async function fetchLiveConfig() {
+  const params = new URLSearchParams({ action: "liveConfig", _: String(Date.now()) });
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller ? window.setTimeout(function abortSlowConfig() { controller.abort(); }, 20000) : null;
+  try {
+    const res = await fetch(APPS_SCRIPT_WEB_APP_URL + "?" + params.toString(), {
+      method: "GET",
+      cache: "no-store",
+      signal: controller ? controller.signal : undefined,
+    });
+    if (!res.ok) throw new Error("Live config request failed: " + res.status);
+    const json = await res.json();
+    if (!json || !json.challenges || typeof json.challenges !== "object") {
+      throw new Error("Backend does not have the liveConfig endpoint yet");
+    }
+    return json;
+  } catch (err) {
+    return fetchSummary();
+  } finally {
+    if (timer) window.clearTimeout(timer);
+  }
 }
 
 // Chief draws (raffle, Gila Monster) use readable GETs so the result can be shown live.
@@ -1790,7 +1816,7 @@ async function saveChallengeToBackend(payload) {
   // Fallback: fire-and-forget POST, then verify by reading the live summary back.
   await postToBackend(payload);
   try {
-    const check = await fetchSummary();
+    const check = await fetchLiveConfig();
     const type = String(payload.type || "");
     const live = check && check.challenges && check.challenges[type];
     if (live && live.title === String(payload.title || "").trim()) {
@@ -1806,6 +1832,30 @@ function rememberName(name) {
 }
 function recallName() {
   try { return window.localStorage.getItem("pom-name") || ""; } catch (e) { return ""; }
+}
+
+const CHALLENGE_CACHE_KEY = "pom-live-challenges-v1";
+
+function recallChallengeSnapshot() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CHALLENGE_CACHE_KEY) || "null");
+    if (!parsed || !parsed.savedAt || !parsed.challenges) return null;
+    if (Date.now() - Number(parsed.savedAt) > 30 * 24 * 60 * 60 * 1000) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
+function rememberChallengeSnapshot(challenges, monsoon, announcement) {
+  try {
+    window.localStorage.setItem(CHALLENGE_CACHE_KEY, JSON.stringify({
+      savedAt: Date.now(),
+      challenges: challenges,
+      monsoon: monsoon || null,
+      announcement: announcement || null,
+    }));
+  } catch (e) { /* private mode or storage disabled */ }
 }
 
 // Theme: "sunset" (default) or "retro" (GeoCities-era Point-O-Matic tribute). Persisted like the name.
@@ -3575,31 +3625,35 @@ body[data-pom-theme="retro"] .pom-theme-toggle { border-radius: 0; background: #
 export default function PointOMatic() {
   const [tab, setTab] = useState("earn");
   const [theme, setTheme] = useState(recallTheme());
+  const cachedChallengeSnapshot = useMemo(function cachedChallenges() { return recallChallengeSnapshot(); }, []);
 
   useEffect(function applyTheme() {
     document.body.setAttribute("data-pom-theme", theme);
   }, [theme]);
-  const [challenges, setChallenges] = useState(FALLBACK_CHALLENGES);
-  const [challengeSync, setChallengeSync] = useState("loading");
-  const [monsoon, setMonsoon] = useState(null);
-  const [announcement, setAnnouncement] = useState(null);
+  const [challenges, setChallenges] = useState(cachedChallengeSnapshot ? cachedChallengeSnapshot.challenges : FALLBACK_CHALLENGES);
+  const [challengeSync, setChallengeSync] = useState(cachedChallengeSnapshot ? "refreshing" : "loading");
+  const [monsoon, setMonsoon] = useState(cachedChallengeSnapshot ? cachedChallengeSnapshot.monsoon : null);
+  const [announcement, setAnnouncement] = useState(cachedChallengeSnapshot ? cachedChallengeSnapshot.announcement : null);
   const [rosterRev, setRosterRev] = useState(0); // bumps when the Team tab roster loads
 
   function applySummary(json) {
-    if (json && json.challenges) {
-      setChallenges({
-        wellness: json.challenges.wellness || FALLBACK_CHALLENGES.wellness,
-        photo: json.challenges.photo || FALLBACK_CHALLENGES.photo,
-        bounty: json.challenges.bounty || null,
-      });
-    }
-    if (json && json.monsoon) setMonsoon(json.monsoon);
-    if (json && json.announcement) setAnnouncement(json.announcement);
+    if (!json || !json.challenges) return;
+    const nextChallenges = {
+      wellness: json.challenges.wellness || FALLBACK_CHALLENGES.wellness,
+      photo: json.challenges.photo || FALLBACK_CHALLENGES.photo,
+      bounty: json.challenges.bounty || null,
+    };
+    const nextMonsoon = json.monsoon || null;
+    const nextAnnouncement = json.announcement || null;
+    setChallenges(nextChallenges);
+    setMonsoon(nextMonsoon);
+    setAnnouncement(nextAnnouncement);
+    rememberChallengeSnapshot(nextChallenges, nextMonsoon, nextAnnouncement);
   }
 
   function reloadLiveChallenges() {
-    setChallengeSync("loading");
-    fetchSummary()
+    setChallengeSync(function syncing(current) { return current === "ready" || cachedChallengeSnapshot ? "refreshing" : "loading"; });
+    fetchLiveConfig()
       .then(function ok(json) {
         if (!json.challenges) throw new Error("Summary did not include live challenges");
         applySummary(json);
@@ -3663,7 +3717,9 @@ export default function PointOMatic() {
       {tab === "glory" && <GloryTab />}
       {tab === "chiefs" && <ChiefTab onQuestSaved={function localQuestSaved(type, quest) {
         setChallenges(function previous(current) {
-          return Object.assign({}, current, { [type]: quest });
+          const next = Object.assign({}, current, { [type]: quest });
+          rememberChallengeSnapshot(next, monsoon, announcement);
+          return next;
         });
         window.setTimeout(reloadLiveChallenges, 1500);
       }} />}
