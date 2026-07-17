@@ -16,6 +16,12 @@ const APPS_SCRIPT_WEB_APP_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
   "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
+// Public CSV export of the canonical Team tab. Loading this directly keeps roster
+// changes independent of the Apps Script deployment used for points and standings.
+const TEAM_SHEET_CSV_URL =
+  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_TEAM_SHEET_CSV_URL) ||
+  "https://docs.google.com/spreadsheets/d/1-qxEZt2q_n6Len0yIcMfODnLyIsDfz-yhD60AkcSz5U/export?format=csv&gid=114097727";
+
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
 
 const HOUSE_COLORS = {
@@ -35,8 +41,8 @@ const CHIEF_USERS = [
   { name: "Johnny", password: "wootwoot1!" },
 ];
 
-// SAFETY NET ONLY. The live roster comes from the Google Sheet "Team" tab at load time.
-// Edit houses in the Team tab — no code push needed. This list is used only if that fetch fails.
+// SAFETY NET ONLY. The live roster comes directly from the Google Sheet "Team" tab.
+// This list is used only if the sheet is unreachable or fails validation.
 const FALLBACK_ROSTER = [
   { name: "Nate Walton", house: "Catalina", role: "Chief", email: "nathantwalton@arizona.edu" },
   { name: "Amrutha Doniparthi", house: "Rincon", role: "Chief", email: "amruthad39@arizona.edu" },
@@ -1473,24 +1479,116 @@ const AWARD_PRESETS = ["Trivia W", "Kahoot crown", "Event MVP", "Chief's whim"];
 /* ------------------------- Helpers ------------------------- */
 
 // LIVE_ROSTER is replaced at startup by the Team tab. Falls back to the baked-in list
-// if the Sheet is unreachable, so residents can always submit.
+// if the sheet is unreachable, so residents can always submit.
 let LIVE_ROSTER = FALLBACK_ROSTER;
 
 function getRoster() { return LIVE_ROSTER; }
 
-// Guarded: only accept a Team tab that actually looks like a roster.
+function normalizeName(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Guarded: only accept a complete, unique Team tab with every house represented.
 function applyLiveRoster(rows) {
   if (!Array.isArray(rows)) return false;
-  const clean = rows.filter(function ok(r) { return r && r.name && r.house; });
-  if (clean.length < 20) return false;         // empty/broken tab -> keep the fallback
-  const houses = new Set(clean.map(function h(r) { return r.house; }));
-  if (!HOUSES.some(function known(h) { return houses.has(h); })) return false;
+  const clean = rows
+    .filter(function active(r) { return r && r.name && r.house; })
+    .map(function normalize(r) {
+      const role = String(r.role || "Resident").trim();
+      const house = String(r.house || "").trim();
+      return {
+        name: String(r.name || "").trim(),
+        house: house,
+        role: role,
+        email: String(r.email || "").trim(),
+        lowestHouseCredit: house === "All" || role === "Independent Adjudicator",
+      };
+    });
+  if (clean.length < 100) return false;        // partial/broken export -> keep fallback
+
+  const seen = new Set();
+  const counts = Object.fromEntries(HOUSES.map(function init(h) { return [h, 0]; }));
+  for (let i = 0; i < clean.length; i += 1) {
+    const row = clean[i];
+    const key = normalizeName(row.name);
+    if (!key || seen.has(key)) return false;
+    if (row.house !== "All" && !HOUSES.includes(row.house)) return false;
+    seen.add(key);
+    if (counts[row.house] !== undefined) counts[row.house] += 1;
+  }
+  if (!HOUSES.every(function complete(h) { return counts[h] >= 20; })) return false;
+
   LIVE_ROSTER = clean;
   return true;
 }
 
-function normalizeName(value) {
-  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+function parseCsvRows(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let quoted = false;
+  const source = String(text || "");
+
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+    if (quoted) {
+      if (char === '"' && source[i + 1] === '"') {
+        field += '"';
+        i += 1;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field.replace(/\r$/, ""));
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+  if (field || row.length) {
+    row.push(field.replace(/\r$/, ""));
+    rows.push(row);
+  }
+  return rows;
+}
+
+function teamCsvToRoster(text) {
+  const rows = parseCsvRows(text);
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(function header(value) { return normalizeName(value); });
+  const index = Object.fromEntries(headers.map(function entry(value, i) { return [value, i]; }));
+  if (index.name === undefined || index.house === undefined) return [];
+
+  return rows.slice(1).filter(function active(row) {
+    const value = index.active === undefined ? "true" : normalizeName(row[index.active]);
+    return ["true", "1", "yes", "y"].includes(value);
+  }).map(function person(row) {
+    return {
+      name: row[index.name] || "",
+      house: row[index.house] || "",
+      role: index.role === undefined ? "Resident" : row[index.role] || "Resident",
+      email: index.email === undefined ? "" : row[index.email] || "",
+    };
+  });
+}
+
+async function fetchTeamRoster() {
+  const separator = TEAM_SHEET_CSV_URL.includes("?") ? "&" : "?";
+  const res = await fetch(TEAM_SHEET_CSV_URL + separator + "_=" + Date.now(), {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Team roster request failed: " + res.status);
+  return teamCsvToRoster(await res.text());
 }
 
 function findRosterPerson(name) {
@@ -3458,11 +3556,6 @@ export default function PointOMatic() {
     }
     if (json && json.monsoon) setMonsoon(json.monsoon);
     if (json && json.announcement) setAnnouncement(json.announcement);
-    // Live roster from the Google Sheet "Team" tab. Rejected if it doesn't look
-    // like a real roster, in which case the built-in fallback stays in place.
-    if (json && json.roster && applyLiveRoster(json.roster)) {
-      setRosterRev(function bump(v) { return v + 1; });
-    }
   }
 
   function reloadLiveChallenges() {
@@ -3473,6 +3566,14 @@ export default function PointOMatic() {
 
   useEffect(function loadChallenges() {
     reloadLiveChallenges();
+  }, []);
+
+  useEffect(function loadRoster() {
+    fetchTeamRoster()
+      .then(function loaded(rows) {
+        if (applyLiveRoster(rows)) setRosterRev(function bump(v) { return v + 1; });
+      })
+      .catch(function quiet() { /* validated fallback roster stays active */ });
   }, []);
 
   return (
