@@ -152,7 +152,7 @@ const FALLBACK_ROSTER = [
   { name: "Sara Valencia", house: "Catalina", role: "PGY1", email: "saravalencia@arizona.edu" },
   { name: "Alousius Fombang", house: "Rincon", role: "PGY1", email: "asfombang@arizona.edu" },
   { name: "D'Andre Gomez", house: "Rincon", role: "PGY1", email: "dmgomez@arizona.edu" },
-  { name: "Dimitrios Filloglou", house: "Rincon", role: "PGY1", email: "dfilioglou98@arizona.edu" },
+  { name: "Dimitrios Filioglou", house: "Rincon", role: "PGY1", email: "dfilioglou98@arizona.edu" },
   { name: "Jason Chen", house: "Rincon", role: "PGY1", email: "jasonlchen@arizona.edu" },
   { name: "Jesse Coy", house: "Rincon", role: "PGY1", email: "jessecoy@arizona.edu" },
   { name: "Levi Cohen", house: "Rincon", role: "PGY1", email: "levicohen@arizona.edu" },
